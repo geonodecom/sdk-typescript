@@ -1,0 +1,8 @@
+supportsES6: true
+importFileExtension: .js
+licenseName: MIT
+fileNaming: PascalCase
+stringEnums: false
+useSingleRequestParameter: true
+withInterfaces: false
+withoutRuntimeChecks: false

@@ -1,0 +1,27 @@
+# Repo-owned files inside typescript-sdk/.
+.openapi-generator/FILES
+.openapi-generator-ignore
+.gitignore
+.npmignore
+README.md
+CHANGELOG.md
+LICENSE
+biome.json
+coverage/**
+dist/**
+node_modules/**
+package-lock.json
+package.json
+scripts/**
+src/clientHeaders.ts
+tests/**
+tsconfig*.json
+vitest.config.ts
+
+# Standalone repository documentation and contract
+assets/**
+CONTRIBUTING.md
+SECURITY.md
+openapi.json
+openapi-generator/**
+docs/**

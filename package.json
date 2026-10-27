@@ -1,0 +1,57 @@
+{
+  "name": "@geonode_scraper/scraper-sdk",
+  "version": "0.6.1",
+  "description": "Build web scraping into server-side JavaScript and TypeScript apps with typed clients for page extraction, website crawling and web search through Geonode.",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/geonodecom/sdk-typescript.git"
+  },
+  "homepage": "https://geonode.com/integrations",
+  "bugs": {
+    "url": "https://github.com/geonodecom/sdk-typescript/issues"
+  },
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "module": "./dist/index.js",
+  "sideEffects": false,
+  "keywords": ["geonode", "openapi", "sdk", "typescript", "fetch"],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "LICENSE",
+    "README.md",
+    "CHANGELOG.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "docs",
+    "assets"
+  ],
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "generate": "bash ./scripts/generate.sh",
+    "lint": "bash ./scripts/biome.sh check",
+    "format": "bash ./scripts/biome.sh format",
+    "test": "bash ./scripts/test.sh",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "prepack": "npm run build"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^1.9.4",
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.12"
+  }
+}

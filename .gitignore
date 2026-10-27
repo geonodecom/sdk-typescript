@@ -1,0 +1,12 @@
+node_modules/
+dist/
+coverage/
+*.tgz
+.openapi-generator/FILES
+
+# Local development and credentials
+.venv/
+.env
+.env.*
+!.env.example
+.DS_Store
