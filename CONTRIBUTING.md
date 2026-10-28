@@ -19,8 +19,8 @@ The tests use local fixtures and mocks; they do not require an API key. Never in
 
 ## Generated code
 
-The runtime client is generated from `openapi.json`. Update the contract and generation/postprocessing scripts when changing generated behavior, and add a focused regression test. See [source provenance](docs/source-provenance.md) for generator requirements and the release-migration boundary.
+The runtime client is generated from `openapi.json`. Update the contract and generation/postprocessing scripts when changing generated behavior, and add a focused regression test. To regenerate, run `bash scripts/generate.sh`. It uses the included contract and the generator version recorded in `.openapi-generator/VERSION`. Install `uv` (recommended) or the matching `openapi-generator-cli` and a Java runtime first, plus Python 3 for filtering and postprocessing.
 
 ## Reports and releases
 
-For bugs, include the package version, runtime version, a minimal reproduction and expected behavior. Security reports belong in [SECURITY.md](SECURITY.md), not a public issue. Publishing still runs from the original monorepo; these standalone repositories have no release workflow yet.
+For bugs, include the package version, runtime version, a minimal reproduction and expected behavior. Security reports belong in [SECURITY.md](SECURITY.md), not a public issue. Maintainers publish releases with the `Publish` workflow in GitHub Actions.

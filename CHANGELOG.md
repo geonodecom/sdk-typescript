@@ -6,9 +6,11 @@ The format is inspired by Keep a Changelog.
 
 ## [Unreleased]
 
+- Removed the internal repository preparation notes and links to the old monorepo.
+
 - Docs links point to the package's page at https://docs.geonode.com/docs/scraper-api/guides/sdks/typescript.
 
-- Prepare standalone source repository with preserved history, documentation and self-contained maintainer tooling. Package name and version are unchanged.
+- Prepare standalone source repository with documentation and self-contained maintainer tooling. Package name and version are unchanged.
 - Update development-only Vitest tooling and its lockfile; contributors need Node.js 20, 22 or 24+. SDK runtime requirements are unchanged.
 
 
