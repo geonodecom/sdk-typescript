@@ -98,6 +98,5 @@ jobs:
       - name: Build package
         run: npm run build
 
-      # Provenance needs a public repository; turn it on once this one is public.
       - name: Publish to npm
-        run: npm publish --no-provenance --access public
+        run: npm publish --provenance --access public
