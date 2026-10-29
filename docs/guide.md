@@ -1,6 +1,6 @@
 # Geonode Scraper SDK for TypeScript
 
-[Integrations page](https://geonode.com/integrations) · [Geonode API docs](https://docs.geonode.com/docs/scraper-api) · [TypeScript SDK setup guide](https://docs.geonode.com/docs/scraper-api/guides/sdks/typescript) · [GitHub source](https://github.com/geonodecom/sdk-typescript) · [Published package](https://www.npmjs.com/package/@geonode_scraper/scraper-sdk) · [Repository overview](../README.md)
+[Integrations page](https://geonode.com/integrations/sdk-typescript) · [Geonode API docs](https://docs.geonode.com/docs/scraper-api) · [TypeScript SDK setup guide](https://docs.geonode.com/docs/scraper-api/guides/sdks/typescript) · [GitHub source](https://github.com/geonodecom/sdk-typescript) · [Published package](https://www.npmjs.com/package/@geonode_scraper/scraper-sdk) · [Repository overview](../README.md)
 
 **[Try Geonode for free](https://app.geonode.com/sign-up)**
 
