@@ -1,6 +1,6 @@
 {
   "name": "@geonode_scraper/scraper-sdk",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "Build web scraping into server-side JavaScript and TypeScript apps with typed clients for page extraction, website crawling and web search through Geonode.",
   "repository": {
     "type": "git",
