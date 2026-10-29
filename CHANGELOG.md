@@ -6,6 +6,8 @@ The format is inspired by Keep a Changelog.
 
 ## [Unreleased]
 
+## [0.6.2] - 2026-10-29
+
 - Releases carry an npm provenance statement linking the package to this repository.
 
 - Removed the internal repository preparation notes and links to the old monorepo.

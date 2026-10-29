@@ -1,7 +1,7 @@
 import type { HTTPHeaders } from "./runtime.js";
 
 /** Package version; tests/client-headers.test.ts keeps it equal to package.json. */
-export const SDK_VERSION = "0.6.1";
+export const SDK_VERSION = "0.6.2";
 
 /** The API labels each request by this name (scraper-api#674); `ts-sdk` is in its allowlist. */
 export const SDK_USER_AGENT = `geonode-ts-sdk/${SDK_VERSION}`;
