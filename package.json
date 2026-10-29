@@ -6,7 +6,7 @@
     "type": "git",
     "url": "https://github.com/geonodecom/sdk-typescript.git"
   },
-  "homepage": "https://geonode.com/integrations",
+  "homepage": "https://geonode.com/integrations/sdk-typescript",
   "bugs": {
     "url": "https://github.com/geonodecom/sdk-typescript/issues"
   },

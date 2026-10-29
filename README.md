@@ -6,7 +6,7 @@ Build server-side JavaScript and TypeScript agents with Geonode’s typed client
 
 **[Try Geonode for free](https://app.geonode.com/sign-up)**
 
-[Integrations page](https://geonode.com/integrations) · [Geonode API docs](https://docs.geonode.com/docs/scraper-api) · [TypeScript SDK setup guide](https://docs.geonode.com/docs/scraper-api/guides/sdks/typescript) · [View package on npm](https://www.npmjs.com/package/@geonode_scraper/scraper-sdk) · [View source on GitHub](https://github.com/geonodecom/sdk-typescript) · [Complete guide](docs/guide.md)
+[Integrations page](https://geonode.com/integrations/sdk-typescript) · [Geonode API docs](https://docs.geonode.com/docs/scraper-api) · [TypeScript SDK setup guide](https://docs.geonode.com/docs/scraper-api/guides/sdks/typescript) · [View package on npm](https://www.npmjs.com/package/@geonode_scraper/scraper-sdk) · [View source on GitHub](https://github.com/geonodecom/sdk-typescript) · [Complete guide](docs/guide.md)
 
 <!-- BEGIN README NAV -->
 [Get started](#get-started) · [Example: prepare website content for retrieval](#example-prepare-website-content-for-retrieval) · [Setup questions](#setup-questions)
