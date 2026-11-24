@@ -176,6 +176,7 @@ export class MapApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => MapJobsResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
             });
@@ -240,6 +241,7 @@ export class MapApi extends runtime.BaseAPI {
                 400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 408: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
                 429: ErrorResponseFromJSON,

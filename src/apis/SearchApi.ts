@@ -176,6 +176,7 @@ export class SearchApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => SearchJobsResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
             });
@@ -238,6 +239,7 @@ export class SearchApi extends runtime.BaseAPI {
             await runtime.throwApiResponseError<ErrorResponse>(error, {
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 408: ErrorResponseFromJSON,
                 422: ErrorResponseFromJSON,
                 429: ErrorResponseFromJSON,

@@ -178,6 +178,7 @@ export class CrawlApi extends runtime.BaseAPI {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
                 429: ErrorResponseFromJSON,
                 503: ErrorResponseFromJSON,
@@ -318,6 +319,7 @@ export class CrawlApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => CrawlJobsResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
             });

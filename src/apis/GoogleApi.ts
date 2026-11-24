@@ -86,9 +86,23 @@ export class GoogleApi extends runtime.BaseAPI {
      */
     async googleSearchLightV1GoogleSearchLightPostRaw(requestParameters: GoogleSearchLightV1GoogleSearchLightPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GoogleSearchLightResponse>> {
         const requestOptions = await this.googleSearchLightV1GoogleSearchLightPostRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
+        try {
+            const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => GoogleSearchLightResponseFromJSON(jsonValue));
+            return new runtime.JSONApiResponse(response, (jsonValue) => GoogleSearchLightResponseFromJSON(jsonValue));
+        } catch (error) {
+            await runtime.throwApiResponseError<ErrorResponse>(error, {
+                401: ErrorResponseFromJSON,
+                402: ErrorResponseFromJSON,
+                408: ErrorResponseFromJSON,
+                422: ErrorResponseFromJSON,
+                429: ErrorResponseFromJSON,
+                500: ErrorResponseFromJSON,
+                502: ErrorResponseFromJSON,
+                503: ErrorResponseFromJSON,
+            });
+            throw error;
+        }
     }
 
     /**
@@ -139,9 +153,23 @@ export class GoogleApi extends runtime.BaseAPI {
      */
     async googleShoppingProductV1GoogleShoppingProductPostRaw(requestParameters: GoogleShoppingProductV1GoogleShoppingProductPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<GoogleShoppingProductResponse>> {
         const requestOptions = await this.googleShoppingProductV1GoogleShoppingProductPostRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
+        try {
+            const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => GoogleShoppingProductResponseFromJSON(jsonValue));
+            return new runtime.JSONApiResponse(response, (jsonValue) => GoogleShoppingProductResponseFromJSON(jsonValue));
+        } catch (error) {
+            await runtime.throwApiResponseError<ErrorResponse>(error, {
+                401: ErrorResponseFromJSON,
+                402: ErrorResponseFromJSON,
+                408: ErrorResponseFromJSON,
+                422: ErrorResponseFromJSON,
+                429: ErrorResponseFromJSON,
+                500: ErrorResponseFromJSON,
+                502: ErrorResponseFromJSON,
+                503: ErrorResponseFromJSON,
+            });
+            throw error;
+        }
     }
 
     /**

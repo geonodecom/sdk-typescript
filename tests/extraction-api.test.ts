@@ -224,6 +224,54 @@ describe("ExtractionApi", () => {
     expect(error.body).toEqual(extractionValidationErrorPayload);
   });
 
+  it("deserializes 403 extraction error responses for Google search pages", async () => {
+    const payload = {
+      error: {
+        code: "GOOGLE_SEARCH_MOVED",
+        message: "Use /v1/google/search/light",
+        retryable: false,
+      },
+      tokens_charged: 0,
+    };
+    const { fetchApi } = createJsonFetchMock(payload, 403);
+    const api = new ExtractionApi(
+      new Configuration({
+        basePath: "https://api.example.com",
+        apiKey: "secret-key",
+        fetchApi,
+      }),
+    );
+
+    const error = await expectApiResponseError<ExtractionErrorResponse>(
+      api.extractV1ExtractPost({
+        extractRequest: { url: "https://www.google.com/search?q=geonode" },
+      }),
+      403,
+    );
+
+    expect(error.data?.error.code).toBe(ExtractionErrorCode.GoogleSearchMoved);
+  });
+
+  it("deserializes a flat 403 error response when billing refuses", async () => {
+    const { fetchApi } = createJsonFetchMock(createErrorResponse("FORBIDDEN", false), 403);
+    const api = new ExtractionApi(
+      new Configuration({
+        basePath: "https://api.example.com",
+        apiKey: "secret-key",
+        fetchApi,
+      }),
+    );
+
+    const error = await expectApiResponseError<ErrorResponse | ExtractionErrorResponse>(
+      api.extractV1ExtractPost({
+        extractRequest: { url: "https://example.com" },
+      }),
+      403,
+    );
+
+    expect(error.data).toMatchObject({ code: "FORBIDDEN", correlationId: "corr-123" });
+  });
+
   it("deserializes job status responses", async () => {
     const { fetchApi } = createJsonFetchMock(jobStatusPayload);
     const api = new ExtractionApi(
@@ -309,7 +357,6 @@ describe("ExtractionApi", () => {
 
   it.each([
     [{ jobId: "job-123" }, { job_id: "job-123" }],
-    [{ url: "https://example.com/path?q=1" }, { url: "https://example.com/path?q=1" }],
     [{ status: JobStatus.Completed }, { status: JobStatus.Completed }],
     [{ output: OutputFormat.Html }, { output: OutputFormat.Html }],
     [
@@ -352,7 +399,6 @@ describe("ExtractionApi", () => {
 
     await api.listJobsV1ExtractJobsGet({
       jobId: "job-123",
-      url: "https://example.com/path?q=1",
       status: JobStatus.Completed,
       output: OutputFormat.Markdown,
       startDate: new Date("2026-01-01T00:00:00.000Z"),
@@ -364,7 +410,6 @@ describe("ExtractionApi", () => {
     const url = new URL(calls[0].input);
     expect(Object.fromEntries(url.searchParams.entries())).toEqual({
       job_id: "job-123",
-      url: "https://example.com/path?q=1",
       status: JobStatus.Completed,
       output: OutputFormat.Markdown,
       start_date: "2026-01-01T00:00:00.000Z",

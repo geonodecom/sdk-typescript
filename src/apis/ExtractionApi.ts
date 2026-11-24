@@ -122,6 +122,7 @@ export class ExtractionApi extends runtime.BaseAPI {
                 400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: (json) => ('error' in json ? ExtractionErrorResponseFromJSON(json) : ErrorResponseFromJSON(json)),
                 422: ExtractionErrorResponseFromJSON,
                 429: ErrorResponseFromJSON,
                 500: ErrorResponseFromJSON,
@@ -263,6 +264,7 @@ export class ExtractionApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => JobCollectionResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 404: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,

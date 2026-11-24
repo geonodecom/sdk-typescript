@@ -12,6 +12,7 @@ The format is inspired by Keep a Changelog.
   - New models: `AiOverviewModel`, `AiSourceModel`, `BatchDownloadResponse`, `GoogleSearchLightPage`, `GoogleSearchLightRequest`, `GoogleSearchLightResponse`, `GoogleShoppingProductRequest`, `GoogleShoppingProductResponse`, `ShoppingInstallmentModel`, `ShoppingProductModel`, `ShoppingPromotionModel`, `ShoppingSellerModel`.
   - New enum values: `TARGET_BLOCKED` in `ExtractionErrorCode`, `GOOGLE_SEARCH_MOVED` in `ExtractionErrorCode`, `yahoo` in `SearchRequest.engine`.
   - Removed enum values: `brave` in `SearchRequest.engine`.
+- The new endpoints, and the status codes the API now documents on existing ones (403 on the create endpoints, 400 on the job lists, 402 on batch), throw `ApiResponseError` with typed `data`. A 403 from extract is an `ExtractionErrorResponse` for `GOOGLE_SEARCH_MOVED` and a plain `ErrorResponse` for `FORBIDDEN`.
 - The integrations page link and package homepage point to this integration's own page.
 
 ## [0.6.2] - 2026-10-29

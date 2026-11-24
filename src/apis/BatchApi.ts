@@ -184,6 +184,8 @@ export class BatchApi extends runtime.BaseAPI {
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
                 401: ErrorResponseFromJSON,
+                402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
                 429: ErrorResponseFromJSON,
                 503: ErrorResponseFromJSON,
@@ -238,9 +240,21 @@ export class BatchApi extends runtime.BaseAPI {
      */
     async downloadBatchResultsV1BatchJobIdDownloadGetRaw(requestParameters: DownloadBatchResultsV1BatchJobIdDownloadGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchDownloadResponse>> {
         const requestOptions = await this.downloadBatchResultsV1BatchJobIdDownloadGetRequestOpts(requestParameters);
-        const response = await this.request(requestOptions, initOverrides);
+        try {
+            const response = await this.request(requestOptions, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => BatchDownloadResponseFromJSON(jsonValue));
+            return new runtime.JSONApiResponse(response, (jsonValue) => BatchDownloadResponseFromJSON(jsonValue));
+        } catch (error) {
+            await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                401: ErrorResponseFromJSON,
+                404: ErrorResponseFromJSON,
+                409: ErrorResponseFromJSON,
+                410: ErrorResponseFromJSON,
+                422: HTTPValidationErrorFromJSON,
+                503: ErrorResponseFromJSON,
+            });
+            throw error;
+        }
     }
 
     /**
