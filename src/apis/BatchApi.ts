@@ -17,6 +17,7 @@ import * as runtime from '../runtime.js';
 import type {
   BatchAccepted,
   BatchCancelled,
+  BatchDownloadResponse,
   BatchJobsResponse,
   BatchRequest,
   BatchStatusResponse,
@@ -29,6 +30,8 @@ import {
     BatchAcceptedToJSON,
     BatchCancelledFromJSON,
     BatchCancelledToJSON,
+    BatchDownloadResponseFromJSON,
+    BatchDownloadResponseToJSON,
     BatchJobsResponseFromJSON,
     BatchJobsResponseToJSON,
     BatchRequestFromJSON,
@@ -49,6 +52,10 @@ export interface CancelBatchV1BatchJobIdDeleteRequest {
 
 export interface CreateBatchV1BatchPostRequest {
     batchRequest: BatchRequest;
+}
+
+export interface DownloadBatchResultsV1BatchJobIdDownloadGetRequest {
+    jobId: string;
 }
 
 export interface GetBatchStatusV1BatchJobIdGetRequest {
@@ -191,6 +198,57 @@ export class BatchApi extends runtime.BaseAPI {
      */
     async createBatchV1BatchPost(requestParameters: CreateBatchV1BatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchAccepted> {
         const response = await this.createBatchV1BatchPostRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for downloadBatchResultsV1BatchJobIdDownloadGet without sending the request
+     */
+    async downloadBatchResultsV1BatchJobIdDownloadGetRequestOpts(requestParameters: DownloadBatchResultsV1BatchJobIdDownloadGetRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['jobId'] == null) {
+            throw new runtime.RequiredError(
+                'jobId',
+                'Required parameter "jobId" was null or undefined when calling downloadBatchResultsV1BatchJobIdDownloadGet().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.apiKey) {
+            headerParameters["X-Api-Key"] = await this.configuration.apiKey("X-Api-Key"); // ApiKeyAuth authentication
+        }
+
+
+        let urlPath = `/v1/batch/{job_id}/download`;
+        urlPath = urlPath.replace(`{${"job_id"}}`, encodeURIComponent(String(requestParameters['jobId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * A temporary link to a zip of a finished batch: one file per successful URL in the batch\'s formats and a manifest.json of the URLs without a file. Asking again returns a new link to the same archive. While the zip is still being built the answer is 202 with a Retry-After header. Not charged.
+     * Download all results of a batch as one zip
+     */
+    async downloadBatchResultsV1BatchJobIdDownloadGetRaw(requestParameters: DownloadBatchResultsV1BatchJobIdDownloadGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchDownloadResponse>> {
+        const requestOptions = await this.downloadBatchResultsV1BatchJobIdDownloadGetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BatchDownloadResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * A temporary link to a zip of a finished batch: one file per successful URL in the batch\'s formats and a manifest.json of the URLs without a file. Asking again returns a new link to the same archive. While the zip is still being built the answer is 202 with a Retry-After header. Not charged.
+     * Download all results of a batch as one zip
+     */
+    async downloadBatchResultsV1BatchJobIdDownloadGet(requestParameters: DownloadBatchResultsV1BatchJobIdDownloadGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchDownloadResponse> {
+        const response = await this.downloadBatchResultsV1BatchJobIdDownloadGetRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

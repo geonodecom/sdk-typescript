@@ -6,6 +6,12 @@ The format is inspired by Keep a Changelog.
 
 ## [Unreleased]
 
+- Synced with the production API spec.
+  - New endpoints: `GET /v1/batch/{job_id}/download`, `POST /v1/google/search/light`, `POST /v1/google/shopping/product`.
+  - Removed request parameters: `url` on `GET /v1/crawl/jobs`, `url` on `GET /v1/extract/jobs`, `url` on `GET /v1/map/jobs`, `query` on `GET /v1/search/jobs`.
+  - New models: `AiOverviewModel`, `AiSourceModel`, `BatchDownloadResponse`, `GoogleSearchLightPage`, `GoogleSearchLightRequest`, `GoogleSearchLightResponse`, `GoogleShoppingProductRequest`, `GoogleShoppingProductResponse`, `ShoppingInstallmentModel`, `ShoppingProductModel`, `ShoppingPromotionModel`, `ShoppingSellerModel`.
+  - New enum values: `TARGET_BLOCKED` in `ExtractionErrorCode`, `GOOGLE_SEARCH_MOVED` in `ExtractionErrorCode`, `yahoo` in `SearchRequest.engine`.
+  - Removed enum values: `brave` in `SearchRequest.engine`.
 - The integrations page link and package homepage point to this integration's own page.
 
 ## [0.6.2] - 2026-10-29

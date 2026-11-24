@@ -45,7 +45,6 @@ export interface GetSearchJobV1SearchJobIdGetRequest {
 }
 
 export interface ListSearchJobsV1SearchJobsGetRequest {
-    query?: string | null;
     status?: JobStatus | null;
     startDate?: Date | null;
     endDate?: Date | null;
@@ -127,10 +126,6 @@ export class SearchApi extends runtime.BaseAPI {
      */
     async listSearchJobsV1SearchJobsGetRequestOpts(requestParameters: ListSearchJobsV1SearchJobsGetRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
-
-        if (requestParameters['query'] != null) {
-            queryParameters['query'] = requestParameters['query'];
-        }
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];

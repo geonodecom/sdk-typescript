@@ -1,8 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AiOverviewModel.js';
+export * from './AiSourceModel.js';
 export * from './BatchAccepted.js';
 export * from './BatchCancelled.js';
 export * from './BatchConfig.js';
+export * from './BatchDownloadResponse.js';
 export * from './BatchItemMetadata.js';
 export * from './BatchJobsResponse.js';
 export * from './BatchListItemResponse.js';
@@ -33,6 +36,11 @@ export * from './ExtractionError.js';
 export * from './ExtractionErrorCode.js';
 export * from './ExtractionErrorResponse.js';
 export * from './ExtractionMetadata.js';
+export * from './GoogleSearchLightPage.js';
+export * from './GoogleSearchLightRequest.js';
+export * from './GoogleSearchLightResponse.js';
+export * from './GoogleShoppingProductRequest.js';
+export * from './GoogleShoppingProductResponse.js';
 export * from './HTTPValidationError.js';
 export * from './HealthResponse.js';
 export * from './HealthStatus.js';
@@ -60,6 +68,10 @@ export * from './SearchJobsResponse.js';
 export * from './SearchListItemResponse.js';
 export * from './SearchRequest.js';
 export * from './SearchResponse.js';
+export * from './ShoppingInstallmentModel.js';
+export * from './ShoppingProductModel.js';
+export * from './ShoppingPromotionModel.js';
+export * from './ShoppingSellerModel.js';
 export * from './StatisticsResponse.js';
 export * from './TokensUsageResponse.js';
 export * from './ValidationError.js';

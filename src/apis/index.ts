@@ -3,6 +3,7 @@
 export * from './BatchApi.js';
 export * from './CrawlApi.js';
 export * from './ExtractionApi.js';
+export * from './GoogleApi.js';
 export * from './MapApi.js';
 export * from './SearchApi.js';
 export * from './StatisticsApi.js';

@@ -58,7 +58,6 @@ export interface GetCrawlStatusV1CrawlJobIdGetRequest {
 }
 
 export interface ListCrawlJobsV1CrawlJobsGetRequest {
-    url?: string | null;
     status?: JobStatus | null;
     startDate?: Date | null;
     endDate?: Date | null;
@@ -269,10 +268,6 @@ export class CrawlApi extends runtime.BaseAPI {
      */
     async listCrawlJobsV1CrawlJobsGetRequestOpts(requestParameters: ListCrawlJobsV1CrawlJobsGetRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
-
-        if (requestParameters['url'] != null) {
-            queryParameters['url'] = requestParameters['url'];
-        }
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];

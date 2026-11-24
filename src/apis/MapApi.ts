@@ -45,7 +45,6 @@ export interface GetMapJobV1MapJobIdGetRequest {
 }
 
 export interface ListMapJobsV1MapJobsGetRequest {
-    url?: string | null;
     status?: JobStatus | null;
     startDate?: Date | null;
     endDate?: Date | null;
@@ -127,10 +126,6 @@ export class MapApi extends runtime.BaseAPI {
      */
     async listMapJobsV1MapJobsGetRequestOpts(requestParameters: ListMapJobsV1MapJobsGetRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
-
-        if (requestParameters['url'] != null) {
-            queryParameters['url'] = requestParameters['url'];
-        }
 
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];

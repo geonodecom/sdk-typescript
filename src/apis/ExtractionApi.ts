@@ -59,7 +59,6 @@ export interface GetJobResultV1ExtractJobIdGetRequest {
 
 export interface ListJobsV1ExtractJobsGetRequest {
     jobId?: string | null;
-    url?: string | null;
     status?: JobStatus | null;
     output?: OutputFormat | null;
     startDate?: Date | null;
@@ -211,10 +210,6 @@ export class ExtractionApi extends runtime.BaseAPI {
             queryParameters['job_id'] = requestParameters['jobId'];
         }
 
-        if (requestParameters['url'] != null) {
-            queryParameters['url'] = requestParameters['url'];
-        }
-
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
         }
@@ -257,7 +252,7 @@ export class ExtractionApi extends runtime.BaseAPI {
     }
 
     /**
-     * List and filter extraction jobs by job ID, URL, status, output format, and date range
+     * List and filter extraction jobs by full job ID (exact match), status, output format, and date range
      * List extraction jobs
      */
     async listJobsV1ExtractJobsGetRaw(requestParameters: ListJobsV1ExtractJobsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JobCollectionResponse>> {
@@ -277,7 +272,7 @@ export class ExtractionApi extends runtime.BaseAPI {
     }
 
     /**
-     * List and filter extraction jobs by job ID, URL, status, output format, and date range
+     * List and filter extraction jobs by full job ID (exact match), status, output format, and date range
      * List extraction jobs
      */
     async listJobsV1ExtractJobsGet(requestParameters: ListJobsV1ExtractJobsGetRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JobCollectionResponse> {

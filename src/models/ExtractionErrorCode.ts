@@ -34,7 +34,9 @@ export const ExtractionErrorCode = {
     Cancelled: 'CANCELLED',
     PaymentRequired: 'PAYMENT_REQUIRED',
     InternalError: 'INTERNAL_ERROR',
-    ProxyError: 'PROXY_ERROR'
+    ProxyError: 'PROXY_ERROR',
+    TargetBlocked: 'TARGET_BLOCKED',
+    GoogleSearchMoved: 'GOOGLE_SEARCH_MOVED'
 } as const;
 export type ExtractionErrorCode = typeof ExtractionErrorCode[keyof typeof ExtractionErrorCode];
 
