@@ -57,6 +57,13 @@ filtered_spec="$(mktemp)"
 trap 'rm -f "$filtered_spec"' EXIT
 "${python_cmd[@]}" "$repo_root/openapi-generator/filter_spec.py" "$spec_file" "$filtered_spec"
 
+# The generator never deletes files, so clients for endpoints the API dropped would linger; both folders are fully generated.
+if grep -qE '^/?src/(apis|models)/' "$ignore_file"; then
+  printf '%s protects files under src/apis or src/models, which this script deletes before generating.\n' "$ignore_file" >&2
+  exit 1
+fi
+rm -rf "$sdk_dir/src/apis" "$sdk_dir/src/models"
+
 "${generator_cmd[@]}" generate \
   -g typescript-fetch \
   -i "$filtered_spec" \

@@ -1,0 +1,184 @@
+name: Sync API spec
+
+# Nightly: compare openapi.json with production and keep one pull request from the
+# integrations bot up to date. Nothing is published; releases stay with Publish.
+on:
+  schedule:
+    - cron: "17 2 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-openapi
+  cancel-in-progress: false
+
+env:
+  SPEC_URL: https://scraper.geonode.io/openapi.json
+  SYNC_BRANCH: bot/openapi-sync
+  UV_VERSION: "0.13.7"
+  OASDIFF_VERSION: "1.35.0"
+  OASDIFF_SHA256: a8023002fcb2eaa7f5758148a9303cb63d33b939886df312268bc0fc7b939140
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      # No credentials are kept in .git/config while third-party tools run; the bot token is minted only to push.
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          fetch-depth: 0
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Install uv and oasdiff
+        run: |
+          python -m pip install "uv==${UV_VERSION}"
+          archive="oasdiff_${OASDIFF_VERSION}_linux_amd64.tar.gz"
+          curl -sSfL -o "$RUNNER_TEMP/$archive" \
+            "https://github.com/oasdiff/oasdiff/releases/download/v${OASDIFF_VERSION}/$archive"
+          echo "${OASDIFF_SHA256}  $RUNNER_TEMP/$archive" | sha256sum -c -
+          mkdir -p "$RUNNER_TEMP/oasdiff"
+          tar -xzf "$RUNNER_TEMP/$archive" -C "$RUNNER_TEMP/oasdiff"
+          echo "$RUNNER_TEMP/oasdiff" >> "$GITHUB_PATH"
+
+      - name: Compare with production
+        id: sync
+        run: |
+          cp openapi.json "$RUNNER_TEMP/openapi.before.json"
+          python scripts/sync_openapi.py --source "$SPEC_URL" --summary "$RUNNER_TEMP/summary.md" >> "$GITHUB_OUTPUT"
+
+      - name: Regenerate the SDK
+        if: steps.sync.outputs.changed == 'true'
+        # Postprocessing writes what it could not fix on its own here instead of failing, so a pull request still opens.
+        env:
+          SYNC_NOTES: ${{ runner.temp }}/sync-notes.md
+        run: bash scripts/generate.sh
+
+      - name: Classify the change
+        id: classify
+        if: steps.sync.outputs.changed == 'true'
+        run: |
+          before="$RUNNER_TEMP/openapi.before.json"
+          oasdiff changelog "$before" openapi.json > "$RUNNER_TEMP/oasdiff-changelog.txt" 2>&1 \
+            || echo "oasdiff changelog failed; see the workflow log." >> "$RUNNER_TEMP/oasdiff-changelog.txt"
+          # Any non-zero exit counts as breaking, so a person always looks when oasdiff is unsure.
+          if oasdiff breaking "$before" openapi.json --fail-on ERR > "$RUNNER_TEMP/oasdiff-breaking.txt" 2>&1; then
+            echo "kind=additive" >> "$GITHUB_OUTPUT"
+          else
+            echo "kind=breaking" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Get an integrations bot token
+        id: app-token
+        if: steps.sync.outputs.changed == 'true'
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # Public Client ID of the geonode-internal-integrations-bot App; `app-id` is deprecated in this action.
+          client-id: Iv23liVguZMcHwiYcaIm
+          private-key: ${{ secrets.INTEGRATIONS_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open or update the pull request
+        if: steps.sync.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BOT_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
+          KIND: ${{ steps.classify.outputs.kind }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          pr=$(gh pr list --head "$SYNC_BRANCH" --state open --json number --jq '.[0].number // empty')
+
+          remote_sha=""
+          if git ls-remote --exit-code --heads origin "$SYNC_BRANCH" > /dev/null; then
+            git fetch --quiet origin "$SYNC_BRANCH"
+            remote_sha=$(git rev-parse FETCH_HEAD)
+            # While the pull request is open, commits by anyone but the bot (as author or committer) are kept.
+            if [ -n "$pr" ]; then
+              people=$(git log --format='%an|%cn' "origin/main..$remote_sha" | grep -vxF "$BOT_LOGIN|$BOT_LOGIN" || true)
+              if [ -n "$people" ]; then
+                echo "::notice::Pull request #$pr has commits from people, so $SYNC_BRANCH is left as is until it is merged or closed."
+                echo "Skipped: pull request #$pr has commits from people." >> "$GITHUB_STEP_SUMMARY"
+                exit 0
+              fi
+            fi
+          fi
+
+          bot_id=$(gh api "/users/${BOT_LOGIN}" --jq .id)
+          git config user.name "$BOT_LOGIN"
+          git config user.email "${bot_id}+${BOT_LOGIN}@users.noreply.github.com"
+          git checkout -B "$SYNC_BRANCH"
+          git add -A
+          git commit --quiet -m "Sync API spec with production"
+          if [ -n "$pr" ] && [ -n "$remote_sha" ] && git diff --quiet "$remote_sha" HEAD; then
+            echo "Pull request #$pr already has these changes." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          git push --quiet --force-with-lease="$SYNC_BRANCH:$remote_sha" origin "$SYNC_BRANCH"
+
+          {
+            cat "$RUNNER_TEMP/summary.md"
+            if [ -s "$RUNNER_TEMP/sync-notes.md" ]; then
+              echo "## Needs attention"
+              echo
+              head -c 10000 "$RUNNER_TEMP/sync-notes.md"
+              echo
+            fi
+            echo "## oasdiff: $KIND"
+            echo
+            echo '```text'
+            head -c 20000 "$RUNNER_TEMP/oasdiff-breaking.txt"
+            echo '```'
+            echo
+            echo "<details><summary>Full oasdiff changelog</summary>"
+            echo
+            echo '```text'
+            head -c 30000 "$RUNNER_TEMP/oasdiff-changelog.txt"
+            echo '```'
+            echo
+            echo "</details>"
+            echo
+            echo "Opened by the nightly [Sync API spec]($RUN_URL) workflow."
+          } | head -c 60000 > "$RUNNER_TEMP/body.md"
+
+          existing=$(gh label list --limit 500 --json name --jq '.[].name')
+          for spec in "api-sync:1d76db" "breaking:d73a4a" "additive:0e8a16"; do
+            label=${spec%%:*}
+            if ! grep -qxF "$label" <<< "$existing"; then
+              gh label create "$label" --color "${spec##*:}" --description "Nightly API spec sync" \
+                || echo "::warning::Could not create the $label label"
+            fi
+          done
+          # Attach only labels that exist, so a missing label cannot stop the pull request from opening.
+          existing=$(gh label list --limit 500 --json name --jq '.[].name')
+          create_args=(); edit_args=()
+          for label in api-sync "$KIND"; do
+            if grep -qxF "$label" <<< "$existing"; then
+              create_args+=(--label "$label"); edit_args+=(--add-label "$label")
+            else
+              echo "::warning::The $label label is missing; add it to the pull request by hand"
+            fi
+          done
+          other=additive
+          if [ "$KIND" = additive ]; then other=breaking; fi
+          if grep -qxF "$other" <<< "$existing"; then edit_args+=(--remove-label "$other"); fi
+          if [ -z "$pr" ]; then
+            gh pr create --base main --head "$SYNC_BRANCH" --title "Sync API spec with production" \
+              --body-file "$RUNNER_TEMP/body.md" "${create_args[@]}"
+          else
+            gh pr edit "$pr" --body-file "$RUNNER_TEMP/body.md" "${edit_args[@]}"
+          fi
+          echo "Sync pull request updated: $KIND." >> "$GITHUB_STEP_SUMMARY"

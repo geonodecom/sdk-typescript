@@ -2,10 +2,17 @@
 
 from __future__ import annotations
 
+import os
+import re
+from functools import partial
 from pathlib import Path
+from typing import Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SDK_DIR = REPO_ROOT
+MODELS_IMPORT = "} from '../models/index.js';"
+# Set by the nightly sync: problems that would stop generation become notes for its pull request instead.
+SYNC_NOTES = os.environ.get("SYNC_NOTES")
 
 
 def apply_replacements(path: Path, replacements: list[tuple[str, str]]) -> bool:
@@ -22,6 +29,53 @@ def apply_replacements(path: Path, replacements: list[tuple[str, str]]) -> bool:
     if updated == original:
         return False
 
+    path.write_text(updated)
+    return True
+
+
+def _import_order(name: str) -> tuple[str, int]:
+    """The generator's order: by model, then FromJSON before ToJSON (so JobStatus comes before JobStatusResponse)."""
+    for rank, suffix in enumerate(("FromJSON", "ToJSON"), start=1):
+        if name.endswith(suffix):
+            return name[: -len(suffix)], rank
+    return name, 0
+
+
+def _add_sorted(text: str, opening: str, indent: str, names: list[str]) -> str:
+    """Add missing names to the `opening ... } from '../models/index.js';` block; leave a complete block untouched."""
+    match = re.search(re.escape(opening) + r"\n([^{}]*?)\n" + re.escape(MODELS_IMPORT), text)
+    if match is None:
+        raise RuntimeError(f"Unable to find the `{opening}` block of model imports")
+    current = [line.strip().rstrip(",") for line in match.group(1).splitlines() if line.strip()]
+    if set(names) <= set(current):
+        return text
+    lines = "\n".join(f"{indent}{name}," for name in sorted(set(current) | set(names), key=_import_order))
+    return text[: match.start(1)] + lines + text[match.end(1) :]
+
+
+def ensure_model_imports(path: Path, model: str) -> bool:
+    """Import a model and its JSON helpers when the generator did not, as the error mapping below needs them."""
+    original = path.read_text()
+    updated = _add_sorted(original, "import type {", "  ", [model])
+    updated = _add_sorted(updated, "import {", "    ", [f"{model}FromJSON", f"{model}ToJSON"])
+    if updated == original:
+        return False
+    path.write_text(updated)
+    return True
+
+
+def unwrapped_methods(path: Path) -> list[str]:
+    """Request methods that throw the generator's plain ResponseError instead of the documented ApiResponseError."""
+    parts = re.split(r"\n    async (\w+Raw)\(", path.read_text())
+    return [name for name, body in zip(parts[1::2], parts[2::2], strict=True) if "throwApiResponseError" not in body]
+
+
+def normalize_whitespace(path: Path) -> bool:
+    """Drop trailing spaces and end the file with exactly one newline, as the committed sources do."""
+    original = path.read_text()
+    updated = "\n".join(line.rstrip(" \t") for line in original.split("\n")).rstrip("\n") + "\n"
+    if updated == original:
+        return False
     path.write_text(updated)
     return True
 
@@ -139,10 +193,6 @@ def main() -> None:
         ],
         SDK_DIR / "src/apis/BatchApi.ts": [
             (
-                "import type {\n  BatchAccepted,\n  BatchCancelled,\n  BatchJobsResponse,\n  BatchRequest,\n  BatchStatusResponse,\n  HTTPValidationError,\n  JobStatus,\n} from '../models/index.js';\nimport {\n    BatchAcceptedFromJSON,\n    BatchAcceptedToJSON,\n    BatchCancelledFromJSON,\n    BatchCancelledToJSON,\n    BatchJobsResponseFromJSON,\n    BatchJobsResponseToJSON,\n    BatchRequestFromJSON,\n    BatchRequestToJSON,\n    BatchStatusResponseFromJSON,\n    BatchStatusResponseToJSON,\n    HTTPValidationErrorFromJSON,\n    HTTPValidationErrorToJSON,\n    JobStatusFromJSON,\n    JobStatusToJSON,\n} from '../models/index.js';",
-                "import type {\n  BatchAccepted,\n  BatchCancelled,\n  BatchJobsResponse,\n  BatchRequest,\n  BatchStatusResponse,\n  ErrorResponse,\n  HTTPValidationError,\n  JobStatus,\n} from '../models/index.js';\nimport {\n    BatchAcceptedFromJSON,\n    BatchAcceptedToJSON,\n    BatchCancelledFromJSON,\n    BatchCancelledToJSON,\n    BatchJobsResponseFromJSON,\n    BatchJobsResponseToJSON,\n    BatchRequestFromJSON,\n    BatchRequestToJSON,\n    BatchStatusResponseFromJSON,\n    BatchStatusResponseToJSON,\n    ErrorResponseFromJSON,\n    ErrorResponseToJSON,\n    HTTPValidationErrorFromJSON,\n    HTTPValidationErrorToJSON,\n    JobStatusFromJSON,\n    JobStatusToJSON,\n} from '../models/index.js';",
-            ),
-            (
                 "        const response = await this.request(requestOptions, initOverrides);\n\n        return new runtime.JSONApiResponse(response, (jsonValue) => BatchCancelledFromJSON(jsonValue));\n",
                 "        try {\n            const response = await this.request(requestOptions, initOverrides);\n\n            return new runtime.JSONApiResponse(response, (jsonValue) => BatchCancelledFromJSON(jsonValue));\n        } catch (error) {\n            await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {\n                401: ErrorResponseFromJSON,\n                404: ErrorResponseFromJSON,\n                409: ErrorResponseFromJSON,\n                422: HTTPValidationErrorFromJSON,\n            });\n            throw error;\n        }\n",
             ),
@@ -160,10 +210,6 @@ def main() -> None:
             ),
         ],
         SDK_DIR / "src/apis/CrawlApi.ts": [
-            (
-                "import type {\n  CrawlAccepted,\n  CrawlCancelled,\n  CrawlJobsResponse,\n  CrawlRequest,\n  CrawlStatusResponse,\n  HTTPValidationError,\n  JobStatus,\n} from '../models/index.js';\nimport {\n    CrawlAcceptedFromJSON,\n    CrawlAcceptedToJSON,\n    CrawlCancelledFromJSON,\n    CrawlCancelledToJSON,\n    CrawlJobsResponseFromJSON,\n    CrawlJobsResponseToJSON,\n    CrawlRequestFromJSON,\n    CrawlRequestToJSON,\n    CrawlStatusResponseFromJSON,\n    CrawlStatusResponseToJSON,\n    HTTPValidationErrorFromJSON,\n    HTTPValidationErrorToJSON,\n    JobStatusFromJSON,\n    JobStatusToJSON,\n} from '../models/index.js';",
-                "import type {\n  CrawlAccepted,\n  CrawlCancelled,\n  CrawlJobsResponse,\n  CrawlRequest,\n  CrawlStatusResponse,\n  ErrorResponse,\n  HTTPValidationError,\n  JobStatus,\n} from '../models/index.js';\nimport {\n    CrawlAcceptedFromJSON,\n    CrawlAcceptedToJSON,\n    CrawlCancelledFromJSON,\n    CrawlCancelledToJSON,\n    CrawlJobsResponseFromJSON,\n    CrawlJobsResponseToJSON,\n    CrawlRequestFromJSON,\n    CrawlRequestToJSON,\n    CrawlStatusResponseFromJSON,\n    CrawlStatusResponseToJSON,\n    ErrorResponseFromJSON,\n    ErrorResponseToJSON,\n    HTTPValidationErrorFromJSON,\n    HTTPValidationErrorToJSON,\n    JobStatusFromJSON,\n    JobStatusToJSON,\n} from '../models/index.js';",
-            ),
             (
                 "        const response = await this.request(requestOptions, initOverrides);\n\n        return new runtime.JSONApiResponse(response, (jsonValue) => CrawlCancelledFromJSON(jsonValue));\n",
                 "        try {\n            const response = await this.request(requestOptions, initOverrides);\n\n            return new runtime.JSONApiResponse(response, (jsonValue) => CrawlCancelledFromJSON(jsonValue));\n        } catch (error) {\n            await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {\n                401: ErrorResponseFromJSON,\n                404: ErrorResponseFromJSON,\n                409: ErrorResponseFromJSON,\n                422: HTTPValidationErrorFromJSON,\n            });\n            throw error;\n        }\n",
@@ -247,9 +293,46 @@ def main() -> None:
         ],
     }
 
+    notes: list[str] = []
+
+    def problem(message: str) -> None:
+        if not SYNC_NOTES:
+            raise RuntimeError(message)
+        print(f"WARNING: {message}")
+        notes.append(message)
+
+    def run(path: Path, edit: Callable[[], bool]) -> None:
+        relative = path.relative_to(REPO_ROOT)
+        if not path.exists():
+            problem(f"`{relative}` is no longer generated; remove its edits from scripts/postprocess_generated.py.")
+            return
+        try:
+            if edit() and path not in changed_files:
+                changed_files.append(path)
+        except RuntimeError as exc:
+            problem(f"`{relative}`: {exc}; the generated code changed, update scripts/postprocess_generated.py.")
+
+    # The error mappings below use ErrorResponse; newer specs import it already, older ones did not.
+    for name in ("BatchApi", "CrawlApi"):
+        path = SDK_DIR / f"src/apis/{name}.ts"
+        run(path, partial(ensure_model_imports, path, "ErrorResponse"))
+
     for path, replacements in replacement_map.items():
-        if apply_replacements(path, replacements):
-            changed_files.append(path)
+        run(path, partial(apply_replacements, path, replacements))
+
+    api_files = sorted((SDK_DIR / "src/apis").glob("*Api.ts"))
+    unwrapped = [f"{p.stem}.{m}" for p in api_files for m in unwrapped_methods(p)]
+    if unwrapped:
+        names = ", ".join(f"`{m}`" for m in unwrapped)
+        message = ("These methods throw a plain ResponseError, not the documented ApiResponseError; add them to "
+                   f"the error mappings in scripts/postprocess_generated.py: {names}.")
+        print(f"WARNING: {message}")
+        notes.append(message)
+
+    # The generator leaves trailing spaces and blank lines; trimming them keeps regeneration diffs to real changes.
+    trimmed = sum(normalize_whitespace(path) for path in sorted((SDK_DIR / "src").rglob("*.ts")))
+    if trimmed:
+        print(f"Trimmed trailing whitespace in {trimmed} generated files.")
 
     if changed_files:
         print("Postprocessed generated TypeScript SDK files:")
@@ -257,6 +340,10 @@ def main() -> None:
             print(f"- {path.relative_to(REPO_ROOT)}")
     else:
         print("Generated TypeScript SDK files already normalized.")
+
+    if SYNC_NOTES and notes:
+        with open(SYNC_NOTES, "a", encoding="utf-8") as fh:
+            fh.writelines(f"- {note}\n" for note in notes)
 
 
 if __name__ == "__main__":
