@@ -3,6 +3,8 @@ dist/
 coverage/
 *.tgz
 .openapi-generator/FILES
+# sync_openapi.py loads filter_spec.py with importlib, which writes bytecode next to it
+__pycache__/
 
 # Local development and credentials
 .venv/
