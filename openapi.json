@@ -1,6 +1,58 @@
 {
     "components": {
         "schemas": {
+            "AiOverviewModel": {
+                "properties": {
+                    "sources": {
+                        "description": "The sources Google cites for it",
+                        "items": {
+                            "$ref": "#/components/schemas/AiSourceModel"
+                        },
+                        "title": "Sources",
+                        "type": "array"
+                    },
+                    "text": {
+                        "description": "The overview's text: a paragraph or heading per line, list items starting with •",
+                        "title": "Text",
+                        "type": "string"
+                    },
+                    "via": {
+                        "description": "\"page\": it came in the results page; \"async\": Google loads it after the page, and it was asked for",
+                        "enum": [
+                            "page",
+                            "async"
+                        ],
+                        "title": "Via",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "text",
+                    "via"
+                ],
+                "title": "AiOverviewModel",
+                "type": "object"
+            },
+            "AiSourceModel": {
+                "properties": {
+                    "title": {
+                        "description": "The source page's title, as Google's source card shows it",
+                        "title": "Title",
+                        "type": "string"
+                    },
+                    "url": {
+                        "description": "Google's redirect link to the source (https://www.google.com/goto?url=…), not the source's own URL",
+                        "title": "Url",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title",
+                    "url"
+                ],
+                "title": "AiSourceModel",
+                "type": "object"
+            },
             "BatchAccepted": {
                 "properties": {
                     "accepted_urls": {
@@ -93,7 +145,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Custom HTTP headers included in each batch item extraction request",
+                        "description": "Custom HTTP headers included in each batch item extraction request, without dropped headers",
                         "title": "Headers"
                     },
                     "proxy": {
@@ -123,6 +175,34 @@
                     "proxy"
                 ],
                 "title": "BatchConfig",
+                "type": "object"
+            },
+            "BatchDownloadResponse": {
+                "properties": {
+                    "download_url": {
+                        "description": "Temporary link to a zip with one file per successful URL in the batch's formats and a manifest.json of the URLs without a file",
+                        "title": "Download Url",
+                        "type": "string"
+                    },
+                    "expires_at": {
+                        "description": "When the link stops working; ask again for a new one",
+                        "format": "date-time",
+                        "title": "Expires At",
+                        "type": "string"
+                    },
+                    "job_id": {
+                        "description": "Unique job identifier",
+                        "format": "uuid",
+                        "title": "Job Id",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "job_id",
+                    "download_url",
+                    "expires_at"
+                ],
+                "title": "BatchDownloadResponse",
                 "type": "object"
             },
             "BatchItemMetadata": {
@@ -279,7 +359,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Custom HTTP headers to include in extraction requests",
+                        "description": "Custom HTTP headers to include in extraction requests. `Host` and `:authority` are dropped: the target host always comes from each item's URL",
                         "title": "Headers"
                     },
                     "ignore_invalid_urls": {
@@ -1310,7 +1390,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Custom HTTP headers to include in extraction request. `Accept-Language` is the one exception on browser-rendered requests: it is not forwarded verbatim, because it would override the header the browser derives from its locale and leave the wire value contradicting `navigator.language`. The language you ask for is still honoured — it selects the browser locale, paired with the proxy country's region, so `en-US` through a German proxy renders the page as `en-DE`.",
+                        "description": "Custom HTTP headers to include in extraction request. `Accept-Language` is the one exception on browser-rendered requests: it is not forwarded verbatim, because it would override the header the browser derives from its locale and leave the wire value contradicting `navigator.language`. The language you ask for is still honoured — it selects the browser locale, paired with the proxy country's region, so `en-US` through a German proxy renders the page as `en-DE`. `Host` and `:authority` are dropped: the target host always comes from `url`.",
                         "title": "Headers"
                     },
                     "processing_mode": {
@@ -1348,7 +1428,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Milliseconds this request may take, counted from when we receive it and including any queue wait. On expiry the escalation chain stops rather than the response merely arriving sooner: no further browser is launched, and the request is not billed. Omit it to keep the system ceiling. Sync requests only: sending it with processing_mode=async is rejected rather than ignored, because an async caller holds a job id and polls at its own pace. Values above the ceiling are clamped to it.",
+                        "description": "Milliseconds this request may take, counted from when we receive it and including any queue wait. A wait for the per-site rate limit or for a free thread uses the same time: when it does not fit, the request is refused with 429 instead of being held longer. On expiry the escalation chain stops rather than the response merely arriving sooner: no further browser is launched, and the request is not billed. Omit it to keep the system ceiling. Sync requests only: sending it with processing_mode=async is rejected rather than ignored, because an async caller holds a job id and polls at its own pace. Values above the ceiling are clamped to it.",
                         "title": "Timeout"
                     },
                     "url": {
@@ -1500,7 +1580,9 @@
                     "CANCELLED",
                     "PAYMENT_REQUIRED",
                     "INTERNAL_ERROR",
-                    "PROXY_ERROR"
+                    "PROXY_ERROR",
+                    "TARGET_BLOCKED",
+                    "GOOGLE_SEARCH_MOVED"
                 ],
                 "title": "ExtractionErrorCode",
                 "type": "string"
@@ -1558,7 +1640,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Custom HTTP headers that were requested for the extraction. `Accept-Language` is echoed here as it was sent; on browser-rendered requests the header actually transmitted is derived from the resolved locale instead.",
+                        "description": "Custom HTTP headers that were forwarded for the extraction, after dropped headers (`Host`, `:authority`) are removed. `Accept-Language` is echoed here as it was sent; on browser-rendered requests the header actually transmitted is derived from the resolved locale instead.",
                         "title": "Headers"
                     },
                     "http_status": {
@@ -1617,6 +1699,436 @@
                     "processing_mode"
                 ],
                 "title": "ExtractionMetadata",
+                "type": "object"
+            },
+            "GoogleSearchLightPage": {
+                "description": "One result page. It carries what the request's `format` names: \"json\" the parsed results, \"html\" the page\nitself, \"both\" all of it.",
+                "properties": {
+                    "ai_overview": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/AiOverviewModel"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Google's AI Overview, on page 1 when asked for (`ai_overview`; \"json\" and \"both\")"
+                    },
+                    "attempts": {
+                        "description": "Number of upstream attempts made for this page",
+                        "title": "Attempts",
+                        "type": "integer"
+                    },
+                    "html": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The page as Google sent it, with `ai_overview` its AI Overview written in (\"html\" and \"both\")",
+                        "title": "Html"
+                    },
+                    "page": {
+                        "description": "Result page",
+                        "title": "Page",
+                        "type": "integer"
+                    },
+                    "results": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "$ref": "#/components/schemas/SearchHitModel"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Organic results, in page order (\"json\" and \"both\")",
+                        "title": "Results"
+                    },
+                    "spelling_correction": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Spelling correction applied to the query (\"json\" and \"both\")",
+                        "title": "Spelling Correction"
+                    },
+                    "suggestions": {
+                        "anyOf": [
+                            {
+                                "items": {
+                                    "type": "string"
+                                },
+                                "type": "array"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Query suggestions returned by Google (\"json\" and \"both\")",
+                        "title": "Suggestions"
+                    }
+                },
+                "required": [
+                    "page",
+                    "attempts"
+                ],
+                "title": "GoogleSearchLightPage",
+                "type": "object"
+            },
+            "GoogleSearchLightRequest": {
+                "properties": {
+                    "ai_overview": {
+                        "default": false,
+                        "description": "Also return Google's AI Overview for the query, when Google gives one: as text and its sources (`ai_overview` in the response) with format \"json\" or \"both\", and written into the page, where Google's own JS would write it, with format \"html\" or \"both\" (its container marked `data-aio-written`). Page 1 only. Where Google loads it after the page, it is asked for too, which can add a few seconds; a search whose overview cannot be had still returns its results.",
+                        "title": "AI Overview",
+                        "type": "boolean"
+                    },
+                    "device": {
+                        "default": "desktop",
+                        "description": "Whose results page to fetch: \"desktop\"; \"mobile\", Google's results as an Android phone gets them; \"iphone\" and \"ipad\", as Safari on an iPhone or an iPad gets them. Pages 2 and on follow the same device's page 1.",
+                        "enum": [
+                            "desktop",
+                            "mobile",
+                            "iphone",
+                            "ipad"
+                        ],
+                        "examples": [
+                            "desktop",
+                            "mobile",
+                            "iphone",
+                            "ipad"
+                        ],
+                        "title": "Device",
+                        "type": "string"
+                    },
+                    "format": {
+                        "default": "json",
+                        "description": "What each page of the answer carries: \"json\" the parsed results, \"html\" the page as Google sent it (Google's ordinary results page), \"both\" all of it. The answer is JSON whatever the format. With `Accept-Encoding: gzip`, \"html\" and \"both\" come gzip-compressed (`Content-Encoding: gzip`).",
+                        "enum": [
+                            "json",
+                            "html",
+                            "both"
+                        ],
+                        "examples": [
+                            "json",
+                            "html",
+                            "both"
+                        ],
+                        "title": "Response format",
+                        "type": "string"
+                    },
+                    "locale": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Locale tag: a language code ('en'), a language-region tag ('en-US'), or 'all'.",
+                        "title": "Locale"
+                    },
+                    "page": {
+                        "default": 1,
+                        "description": "Result page to fetch, 1 to 20. Every page is its own search and is billed as one. Ask for a query's pages in order: the next page is served from the same Google session as the last one.",
+                        "examples": [
+                            1,
+                            2,
+                            5
+                        ],
+                        "maximum": 20.0,
+                        "minimum": 1.0,
+                        "title": "Result page",
+                        "type": "integer"
+                    },
+                    "pages": {
+                        "default": 1,
+                        "description": "Pages 1 to `pages` (at most 10) in one request, fetched one after another through one Google session and exit IP, each by the previous page's own next-page link, and returned together in `pages`. Billed per page returned: the request stops at the first page that fails or that Google does not have, and answers with the pages before it. From page 1; not with `url`.",
+                        "examples": [
+                            1,
+                            3,
+                            5
+                        ],
+                        "maximum": 10.0,
+                        "minimum": 1.0,
+                        "title": "Pages",
+                        "type": "integer"
+                    },
+                    "query": {
+                        "default": "",
+                        "description": "Search query. Required unless `url` is given, which carries the query itself (`q`).",
+                        "maxLength": 1000,
+                        "title": "Query",
+                        "type": "string"
+                    },
+                    "safe": {
+                        "default": "off",
+                        "description": "Safe-search filtering level. Accepted values: \"off\", \"moderate\", or \"strict\".",
+                        "enum": [
+                            "off",
+                            "moderate",
+                            "strict"
+                        ],
+                        "examples": [
+                            "off",
+                            "moderate",
+                            "strict"
+                        ],
+                        "title": "Safe-search level",
+                        "type": "string"
+                    },
+                    "time_range": {
+                        "anyOf": [
+                            {
+                                "enum": [
+                                    "day",
+                                    "week",
+                                    "month",
+                                    "year"
+                                ],
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Restrict results to a recency window. Accepted values: \"day\", \"week\", \"month\", or \"year\".",
+                        "examples": [
+                            "day",
+                            "week",
+                            "month",
+                            "year"
+                        ],
+                        "title": "Time range"
+                    },
+                    "url": {
+                        "anyOf": [
+                            {
+                                "maxLength": 2048,
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "A complete Google results URL to fetch exactly as given, in place of `query`: `https://www.google.com/search?q=...` with whatever of Google's own parameters it carries (`hl`, `gl`, `uule`, `start`, `tbs`, ...). Nothing is added, removed or reordered. Only www.google.com and the full results page (no `tbm`, no `udm`). Not with `query`, `locale`, `page`, `safe`, `time_range` or `uule`, which the URL carries itself; `device`, `format` and `ai_overview` apply as usual.",
+                        "examples": [
+                            "https://www.google.com/search?q=coffee+grinder&hl=en&gl=us&start=10"
+                        ],
+                        "title": "Google results URL"
+                    },
+                    "uule": {
+                        "anyOf": [
+                            {
+                                "maxLength": 512,
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Search as if from this place: a Google UULE, either a place name (\"w+CAIQICI…\", e.g. a ZIP code, city or state) or coordinates (\"a+…\"). Pages 2 and on follow the same place's page 1.",
+                        "examples": [
+                            "w+CAIQICIaQXVzdGluLFRleGFzLFVuaXRlZCBTdGF0ZXM"
+                        ],
+                        "title": "Location (UULE)"
+                    }
+                },
+                "title": "GoogleSearchLightRequest",
+                "type": "object"
+            },
+            "GoogleSearchLightResponse": {
+                "description": "One shape for every request, of one page or several (`pages`).",
+                "properties": {
+                    "job_id": {
+                        "description": "Unique job identifier for this request",
+                        "format": "uuid",
+                        "title": "Job Id",
+                        "type": "string"
+                    },
+                    "pages": {
+                        "description": "The pages, page 1 first",
+                        "items": {
+                            "$ref": "#/components/schemas/GoogleSearchLightPage"
+                        },
+                        "title": "Pages",
+                        "type": "array"
+                    },
+                    "pages_requested": {
+                        "description": "Pages asked for (`pages`; 1 without it)",
+                        "title": "Pages Requested",
+                        "type": "integer"
+                    },
+                    "pages_returned": {
+                        "description": "Pages returned, and billed",
+                        "title": "Pages Returned",
+                        "type": "integer"
+                    },
+                    "pages_stopped": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Why fewer pages than asked came back: no_results (Google has no further page), blocked, upstream_unreachable, timeout, warming_up, clock or error. Null when all of them did.",
+                        "title": "Pages Stopped"
+                    },
+                    "query": {
+                        "description": "Search query that was submitted",
+                        "title": "Query",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "job_id",
+                    "query",
+                    "pages_requested",
+                    "pages_returned",
+                    "pages"
+                ],
+                "title": "GoogleSearchLightResponse",
+                "type": "object"
+            },
+            "GoogleShoppingProductRequest": {
+                "properties": {
+                    "catalog_id": {
+                        "anyOf": [
+                            {
+                                "pattern": "^\\d{5,25}$",
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Google's catalog id of the product. Give this or `url`, not both.",
+                        "examples": [
+                            "11018290803738983204"
+                        ],
+                        "title": "Catalog id"
+                    },
+                    "more_stores": {
+                        "default": 3,
+                        "description": "How many times to ask for \"More stores\" at most. The product's page shows its first stores (three when there are more); each ask adds up to ten. 0 returns the page's stores only. Asking stops by itself at the end of the list. The price of a request does not depend on it.",
+                        "examples": [
+                            0,
+                            3,
+                            15
+                        ],
+                        "maximum": 15.0,
+                        "minimum": 0.0,
+                        "title": "More stores",
+                        "type": "integer"
+                    },
+                    "url": {
+                        "anyOf": [
+                            {
+                                "maxLength": 2048,
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "A Google Shopping product link that names a catalog id (`…/search?ibp=oshop&prds=catalogid:<id>`), in place of `catalog_id`. Only the id is taken from it: the product is asked for as a US buyer in English.",
+                        "examples": [
+                            "https://www.google.com/search?ibp=oshop&q=+&prds=catalogid%3A11018290803738983204"
+                        ],
+                        "title": "Product link"
+                    }
+                },
+                "title": "GoogleShoppingProductRequest",
+                "type": "object"
+            },
+            "GoogleShoppingProductResponse": {
+                "properties": {
+                    "attempts": {
+                        "description": "How many Google sessions the product was asked through",
+                        "title": "Attempts",
+                        "type": "integer"
+                    },
+                    "catalog_id": {
+                        "description": "The catalog id that was asked for",
+                        "title": "Catalog Id",
+                        "type": "string"
+                    },
+                    "complete": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Whether `sellers` is the product's whole list. False when `more_stores`, the request's time or a refusal part of the way ended it first.",
+                        "title": "Complete"
+                    },
+                    "job_id": {
+                        "format": "uuid",
+                        "title": "Job Id",
+                        "type": "string"
+                    },
+                    "more_stores_pages": {
+                        "description": "How many times \"More stores\" was asked for and answered",
+                        "title": "More Stores Pages",
+                        "type": "integer"
+                    },
+                    "product": {
+                        "$ref": "#/components/schemas/ShoppingProductModel"
+                    },
+                    "sellers": {
+                        "description": "The product's stores, in Google's order",
+                        "items": {
+                            "$ref": "#/components/schemas/ShoppingSellerModel"
+                        },
+                        "title": "Sellers",
+                        "type": "array"
+                    },
+                    "sellers_count": {
+                        "description": "How many stores are in `sellers`",
+                        "title": "Sellers Count",
+                        "type": "integer"
+                    },
+                    "sellers_total": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Google's own count of the product's stores, when its page states one. It and the list it comes with disagree by one to three stores on a few products in a hundred.",
+                        "title": "Sellers Total"
+                    }
+                },
+                "required": [
+                    "job_id",
+                    "catalog_id",
+                    "product",
+                    "sellers",
+                    "sellers_count",
+                    "more_stores_pages",
+                    "attempts"
+                ],
+                "title": "GoogleShoppingProductResponse",
                 "type": "object"
             },
             "HTTPValidationError": {
@@ -2743,8 +3255,8 @@
                         "anyOf": [
                             {
                                 "enum": [
-                                    "brave",
                                     "duckduckgo",
+                                    "yahoo",
                                     "naver"
                                 ],
                                 "type": "string"
@@ -2755,8 +3267,8 @@
                         ],
                         "description": "Pin the search to one engine, with no fallback to any other. Omit to let the service rotate across its engines and fall back on failure, which is what most callers want. Pinning trades reliability for control: a single engine having a bad moment becomes your error instead of being routed around.",
                         "examples": [
-                            "brave",
                             "duckduckgo",
+                            "yahoo",
                             "naver"
                         ],
                         "title": "Search engine"
@@ -2770,12 +3282,12 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Locale tag: a language code ('en'), a language-region tag ('en-US'), or 'all'.",
+                        "description": "Locale tag: a language code ('en'), a language-region tag ('en-US'), or 'all'. Omit for no preference; duckduckgo is then searched in en-US.",
                         "title": "Locale"
                     },
                     "page": {
                         "default": 1,
-                        "description": "Result page to fetch. Without `engine`, 1 to 9. With `engine` set, the pinned engine's own limit applies instead: brave 9, duckduckgo 5, naver 9.",
+                        "description": "Result page to fetch. Without `engine`, 1 to 9. With `engine` set, the pinned engine's own limit applies instead: duckduckgo 5, naver 9, yahoo 9.",
                         "examples": [
                             1,
                             2,
@@ -2824,7 +3336,7 @@
                                 "type": "null"
                             }
                         ],
-                        "description": "Restrict results to a recency window. Accepted values: \"day\", \"week\", \"month\", or \"year\".",
+                        "description": "Restrict results to a recency window. Accepted values: \"day\", \"week\", \"month\", or \"year\". Some engines honour fewer: yahoo day/month/week. Pinned to one of them, any other value is rejected; without `engine`, that engine is skipped.",
                         "examples": [
                             "day",
                             "week",
@@ -2907,6 +3419,397 @@
                     "suggestions"
                 ],
                 "title": "SearchResponse",
+                "type": "object"
+            },
+            "ShoppingInstallmentModel": {
+                "properties": {
+                    "down_payment": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What is paid at once, when Google says",
+                        "title": "Down Payment"
+                    },
+                    "monthly_price": {
+                        "description": "What is paid each month",
+                        "title": "Monthly Price",
+                        "type": "number"
+                    },
+                    "months": {
+                        "description": "For how many months",
+                        "title": "Months",
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "monthly_price",
+                    "months"
+                ],
+                "title": "ShoppingInstallmentModel",
+                "type": "object"
+            },
+            "ShoppingProductModel": {
+                "properties": {
+                    "brand": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Brand"
+                    },
+                    "catalog_id": {
+                        "description": "Google's catalog id of the product",
+                        "title": "Catalog Id",
+                        "type": "string"
+                    },
+                    "images": {
+                        "description": "The product's pictures, as Google hosts them",
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Images",
+                        "type": "array"
+                    },
+                    "title": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "title": "Title"
+                    }
+                },
+                "required": [
+                    "catalog_id"
+                ],
+                "title": "ShoppingProductModel",
+                "type": "object"
+            },
+            "ShoppingPromotionModel": {
+                "properties": {
+                    "code": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The code that claims it, when there is one",
+                        "title": "Code"
+                    },
+                    "expires": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "When it ends, as Google words it: \"Expires in 7 days\"",
+                        "title": "Expires"
+                    },
+                    "title": {
+                        "description": "What the store offers on top of its price: \"10% off Fall Seasonal Categories\"",
+                        "title": "Title",
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "title"
+                ],
+                "title": "ShoppingPromotionModel",
+                "type": "object"
+            },
+            "ShoppingSellerModel": {
+                "properties": {
+                    "condition": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "\"Pre-owned\", \"Refurbished\"; absent on a new one",
+                        "title": "Condition"
+                    },
+                    "currency": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "ISO currency of every amount in the row",
+                        "title": "Currency"
+                    },
+                    "delivery": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "\"Free delivery between Oct 13 – 20\"",
+                        "title": "Delivery"
+                    },
+                    "delivery_price": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "What delivery costs: 0 when free, absent when Google does not say",
+                        "title": "Delivery Price"
+                    },
+                    "details": {
+                        "description": "Whatever else the store's row says",
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Details",
+                        "type": "array"
+                    },
+                    "discount": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The discount as Google words it: \"66% off\"",
+                        "title": "Discount"
+                    },
+                    "domain": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The store's own domain",
+                        "title": "Domain"
+                    },
+                    "in_stock": {
+                        "anyOf": [
+                            {
+                                "type": "boolean"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Whether the store has it, when the row says",
+                        "title": "In Stock"
+                    },
+                    "installment": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ShoppingInstallmentModel"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The price by the month, on an offer sold that way"
+                    },
+                    "link": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The store's page for the product: its own address",
+                        "title": "Link"
+                    },
+                    "more_stores_page": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "For a store behind the button, after which ask of \"More stores\" it came (1 first)",
+                        "title": "More Stores Page"
+                    },
+                    "name": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The store's name as Google gives it",
+                        "title": "Name"
+                    },
+                    "original_price": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The price before a discount",
+                        "title": "Original Price"
+                    },
+                    "payment_methods": {
+                        "description": "\"PayPal\", \"Google Pay\", \"Affirm\"",
+                        "items": {
+                            "type": "string"
+                        },
+                        "title": "Payment Methods",
+                        "type": "array"
+                    },
+                    "position": {
+                        "description": "1-based place in Google's list of the product's stores",
+                        "title": "Position",
+                        "type": "integer"
+                    },
+                    "price": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The price; absent on an offer paid by the month",
+                        "title": "Price"
+                    },
+                    "promotion": {
+                        "anyOf": [
+                            {
+                                "$ref": "#/components/schemas/ShoppingPromotionModel"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "returns": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "\"30-day returns\", \"Final sale\"",
+                        "title": "Returns"
+                    },
+                    "shown": {
+                        "description": "\"page\": the product's page shows it at once; \"more_stores\": it is behind the button",
+                        "enum": [
+                            "page",
+                            "more_stores"
+                        ],
+                        "title": "Shown",
+                        "type": "string"
+                    },
+                    "store_rating": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The store's rating with Google, out of 5",
+                        "title": "Store Rating"
+                    },
+                    "store_reviews": {
+                        "anyOf": [
+                            {
+                                "type": "integer"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "How many reviews that rating stands on",
+                        "title": "Store Reviews"
+                    },
+                    "tag": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Google's badge on the row: \"Best price\"",
+                        "title": "Tag"
+                    },
+                    "title": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The store's own title for the product",
+                        "title": "Title"
+                    },
+                    "total_price": {
+                        "anyOf": [
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "The price with delivery, when both are known",
+                        "title": "Total Price"
+                    }
+                },
+                "required": [
+                    "position",
+                    "shown"
+                ],
+                "title": "ShoppingSellerModel",
                 "type": "object"
             },
             "StatisticsResponse": {
@@ -3376,6 +4279,26 @@
                     "401": {
                         "description": "Unauthorized"
                     },
+                    "402": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "No active subscription, insufficient balance or the key's spend cap reached; billing's code in details.reason"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The key lacks the scope or the account is restricted (FORBIDDEN); billing's code in details.reason"
+                    },
                     "422": {
                         "description": "Validation error"
                     },
@@ -3660,6 +4583,108 @@
                 ]
             }
         },
+        "/v1/batch/{job_id}/download": {
+            "get": {
+                "description": "A temporary link to a zip of a finished batch: one file per successful URL in the batch's formats and a manifest.json of the URLs without a file. Asking again returns a new link to the same archive. While the zip is still being built the answer is 202 with a Retry-After header. Not charged.",
+                "operationId": "download_batch_results_v1_batch__job_id__download_get",
+                "parameters": [
+                    {
+                        "in": "path",
+                        "name": "job_id",
+                        "required": true,
+                        "schema": {
+                            "format": "uuid",
+                            "title": "Job Id",
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/BatchDownloadResponse"
+                                }
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "202": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Archive still being built; retry after Retry-After seconds"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "404": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Job not found"
+                    },
+                    "409": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Job is still running"
+                    },
+                    "410": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Results are no longer kept"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/HTTPValidationError"
+                                }
+                            }
+                        },
+                        "description": "Validation Error"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Archive storage unavailable"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "summary": "Download all results of a batch as one zip",
+                "tags": [
+                    "Batch"
+                ]
+            }
+        },
         "/v1/crawl": {
             "post": {
                 "description": "Crawl a website starting from a seed URL up to a given depth and page limit",
@@ -3689,7 +4714,24 @@
                         "description": "Unauthorized"
                     },
                     "402": {
-                        "description": "No active subscription, or insufficient balance"
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "No active subscription, insufficient balance or the key's spend cap reached; billing's code in details.reason"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The seed URL is a Google search results page, which Google Search Light serves (GOOGLE_SEARCH_MOVED); not retryable and not charged. Or billing refused: The key lacks the scope or the account is restricted (FORBIDDEN); billing's code in details.reason"
                     },
                     "422": {
                         "description": "Validation error"
@@ -3717,24 +4759,6 @@
                 "description": "List crawl jobs for the authenticated user with optional filtering and pagination",
                 "operationId": "list_crawl_jobs_v1_crawl_jobs_get",
                 "parameters": [
-                    {
-                        "description": "Filter by seed URL (partial match)",
-                        "in": "query",
-                        "name": "url",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Filter by seed URL (partial match)",
-                            "title": "Url"
-                        }
-                    },
                     {
                         "description": "Filter by job status",
                         "in": "query",
@@ -3829,6 +4853,16 @@
                             }
                         },
                         "description": "Successful Response"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unsupported filter"
                     },
                     "401": {
                         "description": "Unauthorized"
@@ -4056,7 +5090,17 @@
                                 }
                             }
                         },
-                        "description": "Payment required"
+                        "description": "No active subscription, insufficient balance or the key's spend cap reached; billing's code in details.reason"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ExtractionErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Target blocked by the compliance blocklist (TARGET_BLOCKED), or a Google search results page, which Google Search Light serves (GOOGLE_SEARCH_MOVED); not retryable and not charged. Or billing refused, in the flat error body: The key lacks the scope or the account is restricted (FORBIDDEN); billing's code in details.reason"
                     },
                     "422": {
                         "content": {
@@ -4112,11 +5156,11 @@
         },
         "/v1/extract/jobs": {
             "get": {
-                "description": "List and filter extraction jobs by job ID, URL, status, output format, and date range",
+                "description": "List and filter extraction jobs by full job ID (exact match), status, output format, and date range",
                 "operationId": "list_jobs_v1_extract_jobs_get",
                 "parameters": [
                     {
-                        "description": "Filter by job ID",
+                        "description": "Filter by full job ID (exact match, UUID)",
                         "in": "query",
                         "name": "job_id",
                         "required": false,
@@ -4129,26 +5173,8 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by job ID",
+                            "description": "Filter by full job ID (exact match, UUID)",
                             "title": "Job Id"
-                        }
-                    },
-                    {
-                        "description": "Filter by target URL",
-                        "in": "query",
-                        "name": "url",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Filter by target URL",
-                            "title": "Url"
                         }
                     },
                     {
@@ -4263,6 +5289,16 @@
                         },
                         "description": "Job list retrieved"
                     },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unsupported filter or invalid job ID"
+                    },
                     "401": {
                         "content": {
                             "application/json": {
@@ -4373,6 +5409,240 @@
                 ]
             }
         },
+        "/v1/google/search/light": {
+            "post": {
+                "description": "Organic Google results, in one shape for every request: `{job_id, query, pages_requested, pages_returned, pages_stopped, pages: [...]}`. `pages` asks for pages 1 to N in one request, fetched through one Google session and exit IP and billed per page returned; without it the answer holds one page. `format` chooses what each page carries: the parsed results (json), the page as Google sent it (html), or both. `ai_overview` adds Google's AI Overview on page 1.",
+                "operationId": "google_search_light_v1_google_search_light_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoogleSearchLightRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GoogleSearchLightResponse"
+                                }
+                            }
+                        },
+                        "description": "The pages, page 1 first. \"html\" and \"both\" come gzip-compressed for a client that accepts it."
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "402": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "No active subscription, or insufficient token balance"
+                    },
+                    "408": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Request timed out"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "examples": {
+                                    "no_results": {
+                                        "summary": "Google returned no results",
+                                        "value": {
+                                            "code": "NO_RESULTS",
+                                            "correlation_id": "6f1d2a9c-3b7e-4c5a-9e21-0d8f4b7a1c33",
+                                            "details": {
+                                                "attempts": 1,
+                                                "reason": "empty"
+                                            },
+                                            "message": "search blocked (empty) after 1 attempts",
+                                            "retryable": false
+                                        }
+                                    },
+                                    "upstream_blocked": {
+                                        "summary": "Google would not serve the query",
+                                        "value": {
+                                            "code": "UPSTREAM_BLOCKED",
+                                            "correlation_id": "0b8e7f42-91c3-4d6a-b5e0-2a7c9d13f846",
+                                            "details": {
+                                                "attempts": 3,
+                                                "reason": "captcha"
+                                            },
+                                            "message": "search blocked (captcha) after 3 attempts",
+                                            "retryable": true
+                                        }
+                                    }
+                                },
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "No page: Google returned no results (`NO_RESULTS`, not retryable: asking again changes nothing), or would not serve the query (`UPSTREAM_BLOCKED`, retryable: the same query often passes on another exit). Neither is billed. A request body the API cannot read is also a 422, with a `detail` list instead of `code`."
+                    },
+                    "429": {
+                        "description": "Request throttled"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "502": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Upstream unreachable"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Google search is not available on this deployment"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "summary": "Google search, light",
+                "tags": [
+                    "Google"
+                ]
+            }
+        },
+        "/v1/google/shopping/product": {
+            "post": {
+                "description": "A Google Shopping product by its catalog id, and the stores that sell it with their prices: the stores the product's page shows, and those behind its \"More stores\" button, ten at each of `more_stores` asks. As a US buyer sees it, in English. One request is one product, whatever the number of stores.",
+                "operationId": "google_shopping_product_v1_google_shopping_product_post",
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/GoogleShoppingProductRequest"
+                            }
+                        }
+                    },
+                    "required": true
+                },
+                "responses": {
+                    "200": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/GoogleShoppingProductResponse"
+                                }
+                            }
+                        },
+                        "description": "Successful Response"
+                    },
+                    "401": {
+                        "description": "Unauthorized"
+                    },
+                    "402": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "No active subscription, or insufficient balance"
+                    },
+                    "408": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Request timed out"
+                    },
+                    "422": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Google has no such product, or would not serve it"
+                    },
+                    "429": {
+                        "description": "Request throttled"
+                    },
+                    "500": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Internal server error"
+                    },
+                    "502": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Upstream unreachable"
+                    },
+                    "503": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Google Shopping is not available on this deployment"
+                    }
+                },
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "summary": "Google Shopping, a product and its sellers",
+                "tags": [
+                    "Google"
+                ]
+            }
+        },
         "/v1/map": {
             "post": {
                 "description": "Returns the list of URLs found under the given base URL by combining sitemap parsing with HTML link extraction from the seed page. By default discovery is scoped to the exact seed host (a leading `www.` is treated as equivalent) and, when the URL includes a path, to URLs under that path; sibling subdomains and outbound links are excluded. Set `include_subdomains=true` to widen the scope to the whole registrable domain and probe common subdomains (docs, blog, help, support). The optional `search` parameter filters the discovered URLs by case-insensitive substring match — it does NOT query a search engine.",
@@ -4426,7 +5696,17 @@
                                 }
                             }
                         },
-                        "description": "No active subscription, or insufficient token balance"
+                        "description": "No active subscription, insufficient balance or the key's spend cap reached; billing's code in details.reason"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Target blocked by the compliance blocklist (TARGET_BLOCKED); not retryable and not charged. Or billing refused: The key lacks the scope or the account is restricted (FORBIDDEN); billing's code in details.reason"
                     },
                     "408": {
                         "content": {
@@ -4495,24 +5775,6 @@
                 "description": "List map jobs for the authenticated user with optional filtering and pagination",
                 "operationId": "list_map_jobs_v1_map_jobs_get",
                 "parameters": [
-                    {
-                        "description": "Filter by base URL (partial match)",
-                        "in": "query",
-                        "name": "url",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Filter by base URL (partial match)",
-                            "title": "Url"
-                        }
-                    },
                     {
                         "description": "Filter by job status",
                         "in": "query",
@@ -4607,6 +5869,16 @@
                             }
                         },
                         "description": "Successful Response"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unsupported filter"
                     },
                     "401": {
                         "content": {
@@ -4724,7 +5996,7 @@
                                 }
                             }
                         },
-                        "description": "Successful Response"
+                        "description": "Search results. `results` is empty when the engine answered and found nothing; such a search is not charged."
                     },
                     "401": {
                         "description": "Unauthorized"
@@ -4737,7 +6009,17 @@
                                 }
                             }
                         },
-                        "description": "No active subscription, or insufficient token balance"
+                        "description": "No active subscription, insufficient balance or the key's spend cap reached; billing's code in details.reason"
+                    },
+                    "403": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "The key lacks the scope or the account is restricted (FORBIDDEN); billing's code in details.reason"
                     },
                     "408": {
                         "content": {
@@ -4809,24 +6091,6 @@
                 "description": "List search jobs for the authenticated user with optional filtering and pagination",
                 "operationId": "list_search_jobs_v1_search_jobs_get",
                 "parameters": [
-                    {
-                        "description": "Filter by search query (partial match)",
-                        "in": "query",
-                        "name": "query",
-                        "required": false,
-                        "schema": {
-                            "anyOf": [
-                                {
-                                    "type": "string"
-                                },
-                                {
-                                    "type": "null"
-                                }
-                            ],
-                            "description": "Filter by search query (partial match)",
-                            "title": "Query"
-                        }
-                    },
                     {
                         "description": "Filter by job status",
                         "in": "query",
@@ -4921,6 +6185,16 @@
                             }
                         },
                         "description": "Successful Response"
+                    },
+                    "400": {
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "$ref": "#/components/schemas/ErrorResponse"
+                                }
+                            }
+                        },
+                        "description": "Unsupported filter"
                     },
                     "401": {
                         "content": {
@@ -5022,7 +6296,7 @@
                 "operationId": "get_statistics_v1_statistics_get",
                 "parameters": [
                     {
-                        "description": "Filter by start date (defaults to 30 days ago)",
+                        "description": "Filter by start date (defaults to 30 days ago). The window covers at most 366 days, counted back from the end of `end_date` (a date-only `end_date` includes its whole day); an older start is moved up",
                         "in": "query",
                         "name": "start_date",
                         "required": false,
@@ -5036,12 +6310,12 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by start date (defaults to 30 days ago)",
+                            "description": "Filter by start date (defaults to 30 days ago). The window covers at most 366 days, counted back from the end of `end_date` (a date-only `end_date` includes its whole day); an older start is moved up",
                             "title": "Start Date"
                         }
                     },
                     {
-                        "description": "Filter by end date (defaults to now)",
+                        "description": "Filter by end date (defaults to now); a later end date is moved back to now",
                         "in": "query",
                         "name": "end_date",
                         "required": false,
@@ -5055,7 +6329,7 @@
                                     "type": "null"
                                 }
                             ],
-                            "description": "Filter by end date (defaults to now)",
+                            "description": "Filter by end date (defaults to now); a later end date is moved back to now",
                             "title": "End Date"
                         }
                     }

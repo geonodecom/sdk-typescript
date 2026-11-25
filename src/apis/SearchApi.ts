@@ -45,7 +45,6 @@ export interface GetSearchJobV1SearchJobIdGetRequest {
 }
 
 export interface ListSearchJobsV1SearchJobsGetRequest {
-    query?: string | null;
     status?: JobStatus | null;
     startDate?: Date | null;
     endDate?: Date | null;
@@ -128,10 +127,6 @@ export class SearchApi extends runtime.BaseAPI {
     async listSearchJobsV1SearchJobsGetRequestOpts(requestParameters: ListSearchJobsV1SearchJobsGetRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
-        if (requestParameters['query'] != null) {
-            queryParameters['query'] = requestParameters['query'];
-        }
-
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
         }
@@ -181,6 +176,7 @@ export class SearchApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => SearchJobsResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
             });
@@ -243,6 +239,7 @@ export class SearchApi extends runtime.BaseAPI {
             await runtime.throwApiResponseError<ErrorResponse>(error, {
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 408: ErrorResponseFromJSON,
                 422: ErrorResponseFromJSON,
                 429: ErrorResponseFromJSON,

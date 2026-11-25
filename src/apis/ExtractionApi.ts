@@ -59,7 +59,6 @@ export interface GetJobResultV1ExtractJobIdGetRequest {
 
 export interface ListJobsV1ExtractJobsGetRequest {
     jobId?: string | null;
-    url?: string | null;
     status?: JobStatus | null;
     output?: OutputFormat | null;
     startDate?: Date | null;
@@ -123,6 +122,7 @@ export class ExtractionApi extends runtime.BaseAPI {
                 400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: (json) => ('error' in json ? ExtractionErrorResponseFromJSON(json) : ErrorResponseFromJSON(json)),
                 422: ExtractionErrorResponseFromJSON,
                 429: ErrorResponseFromJSON,
                 500: ErrorResponseFromJSON,
@@ -211,10 +211,6 @@ export class ExtractionApi extends runtime.BaseAPI {
             queryParameters['job_id'] = requestParameters['jobId'];
         }
 
-        if (requestParameters['url'] != null) {
-            queryParameters['url'] = requestParameters['url'];
-        }
-
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
         }
@@ -257,7 +253,7 @@ export class ExtractionApi extends runtime.BaseAPI {
     }
 
     /**
-     * List and filter extraction jobs by job ID, URL, status, output format, and date range
+     * List and filter extraction jobs by full job ID (exact match), status, output format, and date range
      * List extraction jobs
      */
     async listJobsV1ExtractJobsGetRaw(requestParameters: ListJobsV1ExtractJobsGetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<JobCollectionResponse>> {
@@ -268,6 +264,7 @@ export class ExtractionApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => JobCollectionResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 404: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
@@ -277,7 +274,7 @@ export class ExtractionApi extends runtime.BaseAPI {
     }
 
     /**
-     * List and filter extraction jobs by job ID, URL, status, output format, and date range
+     * List and filter extraction jobs by full job ID (exact match), status, output format, and date range
      * List extraction jobs
      */
     async listJobsV1ExtractJobsGet(requestParameters: ListJobsV1ExtractJobsGetRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<JobCollectionResponse> {

@@ -241,7 +241,7 @@ try {
 |---|---|---|
 | 401 | The API key is missing or wrong. | No |
 | 402 | No active plan, or not enough balance. | After topping up |
-| 403 | The target is blocked by Geonode's compliance list (`TARGET_BLOCKED`). Not charged. | No |
+| 403 | The target is blocked by Geonode's compliance list (`TARGET_BLOCKED`), the URL is a Google search page that Google Search Light serves instead (`GOOGLE_SEARCH_MOVED`), or your plan does not include this product (`FORBIDDEN`). Not charged. | No |
 | 422 | Either the request is invalid (the body's `detail` names the bad fields), or the page could not be extracted. In the second case `error.code` says why, for example `PERMANENT_BLOCK` or `CAPTCHA_CHALLENGE`, and `error.retryable` says whether trying again can help. | Fix the request; retry only if `retryable` is true |
 | 429 | Too many requests, or all your concurrent requests are in use. | Yes, after `Retry-After` |
 | 503 | Temporarily unavailable. For browser pages, `Async` mode may still work. | Yes, with a delay |
@@ -261,6 +261,7 @@ More in [error handling](https://docs.geonode.com/docs/scraper-api/troubleshooti
 | | `getBatchStatusV1BatchJobIdGet` | `GET /v1/batch/{job_id}` |
 | | `cancelBatchV1BatchJobIdDelete` | `DELETE /v1/batch/{job_id}` |
 | | `listBatchJobsV1BatchJobsGet` | `GET /v1/batch/jobs` |
+| | `downloadBatchResultsV1BatchJobIdDownloadGet` | `GET /v1/batch/{job_id}/download` |
 | `CrawlApi` | `createCrawlV1CrawlPost` | `POST /v1/crawl` |
 | | `getCrawlStatusV1CrawlJobIdGet` | `GET /v1/crawl/{job_id}` |
 | | `cancelCrawlV1CrawlJobIdDelete` | `DELETE /v1/crawl/{job_id}` |
@@ -269,6 +270,8 @@ More in [error handling](https://docs.geonode.com/docs/scraper-api/troubleshooti
 | | `listMapJobsV1MapJobsGet`, `getMapJobV1MapJobIdGet` | `GET /v1/map/jobs`, `GET /v1/map/{job_id}` |
 | `SearchApi` | `searchV1SearchPost` | `POST /v1/search` |
 | | `listSearchJobsV1SearchJobsGet`, `getSearchJobV1SearchJobIdGet` | `GET /v1/search/jobs`, `GET /v1/search/{job_id}` |
+| `GoogleApi` | `googleSearchLightV1GoogleSearchLightPost` | `POST /v1/google/search/light` |
+| | `googleShoppingProductV1GoogleShoppingProductPost` | `POST /v1/google/shopping/product` |
 | `WebhooksApi` | `createWebhookV1WebhooksPost`, `listWebhooksV1WebhooksGet`, `getWebhookV1WebhooksWebhookIdGet`, `updateWebhookV1WebhooksWebhookIdPatch`, `deleteWebhookV1WebhooksWebhookIdDelete` | `/v1/webhooks` |
 | | `listDeliveriesV1WebhooksWebhookIdDeliveriesGet`, `rotateSecretV1WebhooksWebhookIdRotateSecretPost` | `/v1/webhooks/{webhook_id}/…` |
 | `UsageApi` | `getConcurrencyUsageV1UsageConcurrencyGet` | `GET /v1/usage/concurrency` |

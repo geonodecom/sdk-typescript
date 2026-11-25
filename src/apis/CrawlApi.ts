@@ -58,7 +58,6 @@ export interface GetCrawlStatusV1CrawlJobIdGetRequest {
 }
 
 export interface ListCrawlJobsV1CrawlJobsGetRequest {
-    url?: string | null;
     status?: JobStatus | null;
     startDate?: Date | null;
     endDate?: Date | null;
@@ -179,6 +178,7 @@ export class CrawlApi extends runtime.BaseAPI {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
                 429: ErrorResponseFromJSON,
                 503: ErrorResponseFromJSON,
@@ -270,10 +270,6 @@ export class CrawlApi extends runtime.BaseAPI {
     async listCrawlJobsV1CrawlJobsGetRequestOpts(requestParameters: ListCrawlJobsV1CrawlJobsGetRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
-        if (requestParameters['url'] != null) {
-            queryParameters['url'] = requestParameters['url'];
-        }
-
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
         }
@@ -323,6 +319,7 @@ export class CrawlApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => CrawlJobsResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
             });

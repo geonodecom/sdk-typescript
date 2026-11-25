@@ -32,7 +32,7 @@ export interface SearchRequest {
      */
     locale?: string | null;
     /**
-     * Result page to fetch. Without `engine`, 1 to 9. With `engine` set, the pinned engine's own limit applies instead: brave 9, duckduckgo 5, naver 9.
+     * Result page to fetch. Without `engine`, 1 to 9. With `engine` set, the pinned engine's own limit applies instead: duckduckgo 5, naver 9, yahoo 9.
      * @type {number}
      * @memberof SearchRequest
      */
@@ -62,8 +62,8 @@ export interface SearchRequest {
  * @export
  */
 export const SearchRequestEngineEnum = {
-    Brave: 'brave',
     Duckduckgo: 'duckduckgo',
+    Yahoo: 'yahoo',
     Naver: 'naver'
 } as const;
 export type SearchRequestEngineEnum = typeof SearchRequestEngineEnum[keyof typeof SearchRequestEngineEnum];

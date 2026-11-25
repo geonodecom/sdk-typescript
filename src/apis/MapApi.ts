@@ -45,7 +45,6 @@ export interface GetMapJobV1MapJobIdGetRequest {
 }
 
 export interface ListMapJobsV1MapJobsGetRequest {
-    url?: string | null;
     status?: JobStatus | null;
     startDate?: Date | null;
     endDate?: Date | null;
@@ -128,10 +127,6 @@ export class MapApi extends runtime.BaseAPI {
     async listMapJobsV1MapJobsGetRequestOpts(requestParameters: ListMapJobsV1MapJobsGetRequest): Promise<runtime.RequestOpts> {
         const queryParameters: any = {};
 
-        if (requestParameters['url'] != null) {
-            queryParameters['url'] = requestParameters['url'];
-        }
-
         if (requestParameters['status'] != null) {
             queryParameters['status'] = requestParameters['status'];
         }
@@ -181,6 +176,7 @@ export class MapApi extends runtime.BaseAPI {
             return new runtime.JSONApiResponse(response, (jsonValue) => MapJobsResponseFromJSON(jsonValue));
         } catch (error) {
             await runtime.throwApiResponseError<ErrorResponse | HTTPValidationError>(error, {
+                400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
             });
@@ -245,6 +241,7 @@ export class MapApi extends runtime.BaseAPI {
                 400: ErrorResponseFromJSON,
                 401: ErrorResponseFromJSON,
                 402: ErrorResponseFromJSON,
+                403: ErrorResponseFromJSON,
                 408: ErrorResponseFromJSON,
                 422: HTTPValidationErrorFromJSON,
                 429: ErrorResponseFromJSON,

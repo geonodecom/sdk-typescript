@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import os
 import re
 from functools import partial
@@ -11,6 +12,24 @@ from typing import Callable
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SDK_DIR = REPO_ROOT
 MODELS_IMPORT = "} from '../models/index.js';"
+# The request and its return as typescript-fetch writes them in a method nobody has wrapped yet.
+UNWRAPPED_REQUEST = re.compile(
+    r"(?P<indent> +)const response = await this\.request\(requestOptions, initOverrides\);\n\n"
+    r"(?P=indent)return new runtime\.\w+ApiResponse\([^\n]*\);\n"
+)
+ERROR_MAPPING = re.compile(r"throwApiResponseError<[^>]*>\(error, \{\n(?P<entries>.*?)\n(?P<indent> +)\}\);", re.S)
+MAPPING_ENTRY = re.compile(r"^\s*(\d{3}): (.+),$")
+# Statuses whose body comes in more than one shape, so a single model would misread one of them.
+ERROR_OVERRIDES = {
+    # 403: ExtractionErrorResponse for Google search pages, a flat ErrorResponse when billing refuses (FORBIDDEN).
+    "extractV1ExtractPost": {
+        "403": "(json) => ('error' in json ? ExtractionErrorResponseFromJSON(json) : ErrorResponseFromJSON(json))",
+    },
+}
+# typescript-fetch prefixes method names that are reserved words with an underscore.
+TS_RESERVED = {"break", "case", "catch", "class", "const", "continue", "debugger", "default", "delete", "do", "else",
+               "enum", "export", "extends", "finally", "for", "function", "if", "import", "in", "instanceof", "new",
+               "return", "super", "switch", "this", "throw", "try", "typeof", "var", "void", "while", "with"}
 # Set by the nightly sync: problems that would stop generation become notes for its pull request instead.
 SYNC_NOTES = os.environ.get("SYNC_NOTES")
 
@@ -61,6 +80,89 @@ def ensure_model_imports(path: Path, model: str) -> bool:
     if updated == original:
         return False
     path.write_text(updated)
+    return True
+
+
+def method_name(operation_id: str) -> str:
+    """The method typescript-fetch generates for an operationId: extract_v1_extract_post -> extractV1ExtractPost."""
+    first, *rest = [part for part in re.split(r"[_\W]+", operation_id) if part]
+    name = first[:1].lower() + first[1:] + "".join(part[:1].upper() + part[1:] for part in rest)
+    return f"_{name}" if name in TS_RESERVED else name
+
+
+def documented_errors(spec: dict) -> dict[str, dict[str, str | None]]:
+    """Error model per documented 4xx/5xx status, by generated method.
+
+    A status without a body gets ErrorResponse, as the hand mappings do; a body that is not a plain `$ref` gets None,
+    which ensure_error_mapping refuses rather than guessing.
+    """
+    errors: dict[str, dict[str, str | None]] = {}
+    for path, item in spec.get("paths", {}).items():
+        if path.startswith("/v1/internal/"):  # filter_spec.py drops these before generation
+            continue
+        for operation in item.values():
+            if not isinstance(operation, dict) or "operationId" not in operation:
+                continue
+            codes: dict[str, str | None] = {}
+            for status, response in operation.get("responses", {}).items():
+                if status.isdigit() and int(status) >= 400:
+                    content = response.get("content")
+                    ref = (content or {}).get("application/json", {}).get("schema", {}).get("$ref", "")
+                    codes[status] = ref.rsplit("/", 1)[-1] if ref else (None if content else "ErrorResponse")
+            if codes:
+                errors[method_name(operation["operationId"])] = codes
+    return errors
+
+
+def ensure_error_mapping(
+    path: Path, method: str, errors: dict[str, str | None], overrides: dict[str, str] | None = None
+) -> bool:
+    """Make `method` raise ApiResponseError for every documented status, keeping every entry already there as is."""
+    text = path.read_text()
+    start = text.find(f"\n    async {method}Raw(")
+    if start < 0:
+        raise RuntimeError(f"Unable to find {method}Raw")
+    end = text.find("\n    async ", start + 1)
+    end = len(text) if end < 0 else end
+    body = text[start:end]
+
+    mapping = ERROR_MAPPING.search(body)
+    existing: dict[str, str] = {}
+    for line in mapping.group("entries").splitlines() if mapping else []:
+        entry = MAPPING_ENTRY.match(line)
+        if entry is None:
+            raise RuntimeError(f"Unexpected line in the error mapping of {method}Raw: {line.strip()}")
+        existing[entry.group(1)] = entry.group(2)
+    wanted = {**{code: f"{model}FromJSON" if model else None for code, model in errors.items()}, **(overrides or {})}
+    unmappable = sorted(code for code, expr in wanted.items() if expr is None and code not in existing)
+    if unmappable:
+        raise RuntimeError(f"{method}Raw: status {', '.join(unmappable)} has a body schema to map by hand")
+    merged = {**{code: expr for code, expr in wanted.items() if expr}, **existing}
+    if mapping and merged == existing:
+        return False
+    models = sorted({model for expr in merged.values() for model in re.findall(r"(\w+)FromJSON", expr)})
+
+    def mapping_block(closing_indent: str) -> str:
+        lines = "".join(f"{closing_indent}    {code}: {expr},\n" for code, expr in sorted(merged.items()))
+        return f"throwApiResponseError<{' | '.join(models)}>(error, {{\n{lines}{closing_indent}}});"
+
+    if mapping:
+        body = body[: mapping.start()] + mapping_block(mapping.group("indent")) + body[mapping.end() :]
+    else:
+        request = UNWRAPPED_REQUEST.search(body)
+        if request is None:
+            raise RuntimeError(f"Unable to find the request in {method}Raw")
+        indent = request.group("indent")
+        call = "".join(f"    {line}\n" if line else "\n" for line in request.group(0).rstrip("\n").split("\n"))
+        wrapped = (f"{indent}try {{\n{call}{indent}}} catch (error) {{\n"
+                   f"{indent}    await runtime.{mapping_block(indent + '    ')}\n"
+                   f"{indent}    throw error;\n{indent}}}\n")
+        body = body[: request.start()] + wrapped + body[request.end() :]
+    text = text[:start] + body + text[end:]
+    for model in models:
+        text = _add_sorted(text, "import type {", "  ", [model])
+        text = _add_sorted(text, "import {", "    ", [f"{model}FromJSON", f"{model}ToJSON"])
+    path.write_text(text)
     return True
 
 
@@ -320,7 +422,21 @@ def main() -> None:
     for path, replacements in replacement_map.items():
         run(path, partial(apply_replacements, path, replacements))
 
+    # Every documented error status raises ApiResponseError, so new endpoints and status codes need no hand edits.
+    errors = documented_errors(json.loads((REPO_ROOT / "openapi.json").read_text()))
     api_files = sorted((SDK_DIR / "src/apis").glob("*Api.ts"))
+    generated: set[str] = set()
+    for path in api_files:
+        for method in re.findall(r"\n    async (\w+)Raw\(", path.read_text()):
+            generated.add(method)
+            if method in errors:
+                run(path, partial(ensure_error_mapping, path, method, errors[method], ERROR_OVERRIDES.get(method)))
+    if missing := sorted(set(errors) - generated):
+        message = ("No generated method found for these operations, so their errors are not mapped; check "
+                   "method_name in scripts/postprocess_generated.py: " + ", ".join(f"`{m}`" for m in missing) + ".")
+        print(f"WARNING: {message}")
+        notes.append(message)
+
     unwrapped = [f"{p.stem}.{m}" for p in api_files for m in unwrapped_methods(p)]
     if unwrapped:
         names = ", ".join(f"`{m}`" for m in unwrapped)
