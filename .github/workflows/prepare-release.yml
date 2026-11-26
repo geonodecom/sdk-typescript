@@ -1,0 +1,97 @@
+name: Prepare release
+
+# Runs scripts/release.py on main and opens a "Release X.Y.Z" pull request from the integrations bot.
+# Nothing is published: merge the pull request, then run Publish on main.
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "patch, minor, major, or an exact version such as 0.7.0"
+        required: true
+        default: minor
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: prepare-release
+  cancel-in-progress: false
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Require main
+        if: github.ref != 'refs/heads/main'
+        run: |
+          echo "::error::Run Prepare release on main; releases are built from main."
+          exit 1
+
+      - uses: actions/checkout@v6
+        with:
+          ref: main
+          persist-credentials: false
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - name: Set the version and date the release notes
+        id: release
+        env:
+          # Passed through the environment, never pasted into the script; release.py validates it.
+          WANTED: ${{ inputs.version }}
+        run: python scripts/release.py --notes "$RUNNER_TEMP/notes.md" -- "$WANTED"
+
+      - name: Get an integrations bot token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          # Public Client ID of the geonode-internal-integrations-bot App; `app-id` is deprecated in this action.
+          client-id: Iv23liVguZMcHwiYcaIm
+          private-key: ${{ secrets.INTEGRATIONS_BOT_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Open the release pull request
+        env:
+          GH_TOKEN: ${{ steps.app-token.outputs.token }}
+          BOT_LOGIN: ${{ steps.app-token.outputs.app-slug }}[bot]
+          PREVIOUS: ${{ steps.release.outputs.previous }}
+          VERSION: ${{ steps.release.outputs.version }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          branch="release/$VERSION"
+          git remote set-url origin "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          if git ls-remote --exit-code --heads origin "$branch" > /dev/null; then
+            echo "::error::Branch $branch already exists. Merge its pull request, or close it, delete the branch and run again."
+            exit 1
+          fi
+
+          bot_id=$(gh api "/users/${BOT_LOGIN}" --jq .id)
+          git config user.name "$BOT_LOGIN"
+          git config user.email "${bot_id}+${BOT_LOGIN}@users.noreply.github.com"
+          git checkout -b "$branch"
+          git commit --quiet -am "Release $VERSION"
+          git push --quiet origin "$branch"
+
+          {
+            echo "Releases $VERSION (previous: $PREVIOUS). Made by \`scripts/release.py\` in [this run]($RUN_URL)."
+            echo
+            echo "## Release notes"
+            echo
+            cat "$RUNNER_TEMP/notes.md"
+            echo
+            echo "## After merging"
+            echo
+            echo "Run the \`Publish\` workflow on \`main\`. Merging publishes nothing."
+          } > "$RUNNER_TEMP/body.md"
+          url=$(gh pr create --base main --head "$branch" --title "Release $VERSION" --body-file "$RUNNER_TEMP/body.md")
+          echo "Opened $url" >> "$GITHUB_STEP_SUMMARY"
