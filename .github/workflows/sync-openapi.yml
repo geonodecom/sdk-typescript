@@ -80,6 +80,23 @@ jobs:
             echo "kind=breaking" >> "$GITHUB_OUTPUT"
           fi
 
+      # Public repos cloned outside the workspace, so nothing here can end up in the bot's commit.
+      - name: List what the integrations lack
+        if: steps.sync.outputs.changed == 'true'
+        continue-on-error: true
+        timeout-minutes: 5
+        env:
+          GIT_TERMINAL_PROMPT: "0"
+        run: |
+          dir="$RUNNER_TEMP/integrations"
+          mkdir -p "$dir"
+          for repo in integration-n8n integration-make integration-zapier; do
+            git clone --quiet --depth 1 "https://github.com/geonodecom/$repo.git" "$dir/$repo" \
+              || echo "::warning::Could not clone geonodecom/$repo"
+          done
+          python scripts/integration_gaps.py --before "$RUNNER_TEMP/openapi.before.json" --after openapi.json \
+            --sources "$dir" --out "$RUNNER_TEMP/integrations.md"
+
       - name: Get an integrations bot token
         id: app-token
         if: steps.sync.outputs.changed == 'true'
@@ -117,24 +134,22 @@ jobs:
             fi
           fi
 
-          bot_id=$(gh api "/users/${BOT_LOGIN}" --jq .id)
-          git config user.name "$BOT_LOGIN"
-          git config user.email "${bot_id}+${BOT_LOGIN}@users.noreply.github.com"
-          git checkout -B "$SYNC_BRANCH"
-          git add -A
-          git commit --quiet -m "Sync API spec with production"
-          if [ -n "$pr" ] && [ -n "$remote_sha" ] && git diff --quiet "$remote_sha" HEAD; then
-            echo "Pull request #$pr already has these changes." >> "$GITHUB_STEP_SUMMARY"
-            exit 0
-          fi
-          git push --quiet --force-with-lease="$SYNC_BRANCH:$remote_sha" origin "$SYNC_BRANCH"
-
           {
             cat "$RUNNER_TEMP/summary.md"
             if [ -s "$RUNNER_TEMP/sync-notes.md" ]; then
               echo "## Needs attention"
               echo
               head -c 10000 "$RUNNER_TEMP/sync-notes.md"
+              echo
+            fi
+            # Before the oasdiff blocks, so the 60,000-byte cut below reaches them first.
+            if [ -s "$RUNNER_TEMP/integrations.md" ]; then
+              cat "$RUNNER_TEMP/integrations.md"
+              echo
+            else
+              echo "## Integrations: n8n, Make, Zapier"
+              echo
+              echo "The integration check did not run; see [the workflow log]($RUN_URL)."
               echo
             fi
             echo "## oasdiff: $KIND"
@@ -152,7 +167,26 @@ jobs:
             echo "</details>"
             echo
             echo "Opened by the nightly [Sync API spec]($RUN_URL) workflow."
-          } | head -c 60000 > "$RUNNER_TEMP/body.md"
+          } > "$RUNNER_TEMP/body.full.md"
+          # Cut from a file: piping into head would end the writer with SIGPIPE, which fails this step.
+          head -c 60000 "$RUNNER_TEMP/body.full.md" > "$RUNNER_TEMP/body.md"
+
+          bot_id=$(gh api "/users/${BOT_LOGIN}" --jq .id)
+          git config user.name "$BOT_LOGIN"
+          git config user.email "${bot_id}+${BOT_LOGIN}@users.noreply.github.com"
+          git checkout -B "$SYNC_BRANCH"
+          git add -A
+          git commit --quiet -m "Sync API spec with production"
+          if [ -n "$pr" ] && [ -n "$remote_sha" ] && git diff --quiet "$remote_sha" HEAD; then
+            # The code is the same, but the integrations section may have changed since.
+            if gh pr edit "$pr" --body-file "$RUNNER_TEMP/body.md"; then
+              echo "Pull request #$pr already has these changes; its description was refreshed." >> "$GITHUB_STEP_SUMMARY"
+            else
+              echo "::warning::Could not refresh the description of pull request #$pr"
+            fi
+            exit 0
+          fi
+          git push --quiet --force-with-lease="$SYNC_BRANCH:$remote_sha" origin "$SYNC_BRANCH"
 
           existing=$(gh label list --limit 500 --json name --jq '.[].name')
           for spec in "api-sync:1d76db" "breaking:d73a4a" "additive:0e8a16"; do
