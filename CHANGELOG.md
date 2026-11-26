@@ -6,6 +6,8 @@ The format is inspired by Keep a Changelog.
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-11-26
+
 - Synced with the production API spec.
   - New endpoints: `GET /v1/batch/{job_id}/download`, `POST /v1/google/search/light`, `POST /v1/google/shopping/product`.
   - Removed request parameters: `url` on `GET /v1/crawl/jobs`, `url` on `GET /v1/extract/jobs`, `url` on `GET /v1/map/jobs`, `query` on `GET /v1/search/jobs`.
