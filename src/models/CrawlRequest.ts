@@ -60,7 +60,7 @@ export interface CrawlRequest {
      */
     includeSubdomains?: boolean;
     /**
-     * Maximum number of pages to crawl
+     * Maximum number of pages to crawl. A job stops starting new pages 24 hours after its first reservation: pages already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.
      * @type {number}
      * @memberof CrawlRequest
      */

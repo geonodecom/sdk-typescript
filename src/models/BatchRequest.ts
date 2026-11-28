@@ -72,7 +72,7 @@ export interface BatchRequest {
      */
     renderJs?: boolean;
     /**
-     * URLs to extract in one batch
+     * URLs to extract in one batch. A job stops starting new URLs 24 hours after its first reservation: URLs already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.
      * @type {Array<string>}
      * @memberof BatchRequest
      */

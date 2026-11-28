@@ -116,6 +116,12 @@ export interface BatchStatusResponse {
     status: JobStatus;
     /**
      *
+     * @type {string}
+     * @memberof BatchStatusResponse
+     */
+    stopReason?: string | null;
+    /**
+     *
      * @type {BatchTokenSummary}
      * @memberof BatchStatusResponse
      */
@@ -162,6 +168,7 @@ export function BatchStatusResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'pendingUrls': json['pending_urls'] == null ? undefined : json['pending_urls'],
         'results': json['results'] == null ? undefined : ((json['results'] as Array<any>).map(BatchResultItemFromJSON)),
         'status': JobStatusFromJSON(json['status']),
+        'stopReason': json['stop_reason'] == null ? undefined : json['stop_reason'],
         'tokenSummary': BatchTokenSummaryFromJSON(json['token_summary']),
         'totalUrls': json['total_urls'] == null ? undefined : json['total_urls'],
     };
@@ -189,6 +196,7 @@ export function BatchStatusResponseToJSONTyped(value?: BatchStatusResponse | nul
         'pending_urls': value['pendingUrls'],
         'results': value['results'] == null ? undefined : ((value['results'] as Array<any>).map(BatchResultItemToJSON)),
         'status': JobStatusToJSON(value['status']),
+        'stop_reason': value['stopReason'],
         'token_summary': BatchTokenSummaryToJSON(value['tokenSummary']),
         'total_urls': value['totalUrls'],
     };

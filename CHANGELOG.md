@@ -6,6 +6,9 @@ The format is inspired by Keep a Changelog.
 
 ## [Unreleased]
 
+- Synced with the production API spec.
+  - New model fields: `BatchStatusResponse.stop_reason`, `CrawlStatusResponse.stop_reason`.
+
 ## [0.7.0] - 2026-11-26
 
 - Synced with the production API spec.

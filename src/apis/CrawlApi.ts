@@ -165,7 +165,7 @@ export class CrawlApi extends runtime.BaseAPI {
     }
 
     /**
-     * Crawl a website starting from a seed URL up to a given depth and page limit
+     * Crawl a website starting from a seed URL up to a given depth and page limit. A job stops starting new pages 24 hours after its first reservation: pages already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.
      * Start a crawl job
      */
     async createCrawlV1CrawlPostRaw(requestParameters: CreateCrawlV1CrawlPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CrawlAccepted>> {
@@ -188,7 +188,7 @@ export class CrawlApi extends runtime.BaseAPI {
     }
 
     /**
-     * Crawl a website starting from a seed URL up to a given depth and page limit
+     * Crawl a website starting from a seed URL up to a given depth and page limit. A job stops starting new pages 24 hours after its first reservation: pages already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.
      * Start a crawl job
      */
     async createCrawlV1CrawlPost(requestParameters: CreateCrawlV1CrawlPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CrawlAccepted> {
