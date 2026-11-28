@@ -104,6 +104,12 @@ export interface CrawlStatusResponse {
     status: JobStatus;
     /**
      *
+     * @type {string}
+     * @memberof CrawlStatusResponse
+     */
+    stopReason?: string | null;
+    /**
+     *
      * @type {CrawlTokenSummary}
      * @memberof CrawlStatusResponse
      */
@@ -155,6 +161,7 @@ export function CrawlStatusResponseFromJSONTyped(json: any, ignoreDiscriminator:
         'jobId': json['job_id'],
         'results': json['results'] == null ? undefined : ((json['results'] as Array<any>).map(CrawlPageItemFromJSON)),
         'status': JobStatusFromJSON(json['status']),
+        'stopReason': json['stop_reason'] == null ? undefined : json['stop_reason'],
         'tokenSummary': CrawlTokenSummaryFromJSON(json['token_summary']),
         'totalPages': json['total_pages'] == null ? undefined : json['total_pages'],
         'url': json['url'],
@@ -181,6 +188,7 @@ export function CrawlStatusResponseToJSONTyped(value?: CrawlStatusResponse | nul
         'job_id': value['jobId'],
         'results': value['results'] == null ? undefined : ((value['results'] as Array<any>).map(CrawlPageItemToJSON)),
         'status': JobStatusToJSON(value['status']),
+        'stop_reason': value['stopReason'],
         'token_summary': CrawlTokenSummaryToJSON(value['tokenSummary']),
         'total_pages': value['totalPages'],
         'url': value['url'],

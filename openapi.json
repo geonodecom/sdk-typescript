@@ -379,7 +379,7 @@
                         "type": "boolean"
                     },
                     "urls": {
-                        "description": "URLs to extract in one batch",
+                        "description": "URLs to extract in one batch. A job stops starting new URLs 24 hours after its first reservation: URLs already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.",
                         "items": {
                             "type": "string"
                         },
@@ -551,6 +551,18 @@
                     },
                     "status": {
                         "$ref": "#/components/schemas/JobStatus"
+                    },
+                    "stop_reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Why a completed job was cut short, otherwise null. The only value today is `time_limit`: the job reached its run time limit and did not start the rest of its work.",
+                        "title": "Stop Reason"
                     },
                     "token_summary": {
                         "$ref": "#/components/schemas/BatchTokenSummary"
@@ -1011,7 +1023,7 @@
                     },
                     "limit": {
                         "default": 50,
-                        "description": "Maximum number of pages to crawl",
+                        "description": "Maximum number of pages to crawl. A job stops starting new pages 24 hours after its first reservation: pages already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.",
                         "maximum": 10000.0,
                         "minimum": 1.0,
                         "title": "Limit",
@@ -1137,6 +1149,18 @@
                     },
                     "status": {
                         "$ref": "#/components/schemas/JobStatus"
+                    },
+                    "stop_reason": {
+                        "anyOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ],
+                        "description": "Why a completed job was cut short, otherwise null. The only value today is `time_limit`: the job reached its run time limit and did not start the rest of its work.",
+                        "title": "Stop Reason"
                     },
                     "token_summary": {
                         "$ref": "#/components/schemas/CrawlTokenSummary"
@@ -4253,7 +4277,7 @@
         },
         "/v1/batch": {
             "post": {
-                "description": "Queue a batch of URLs for asynchronous extraction",
+                "description": "Queue a batch of URLs for asynchronous extraction. A job stops starting new URLs 24 hours after its first reservation: URLs already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.",
                 "operationId": "create_batch_v1_batch_post",
                 "requestBody": {
                     "content": {
@@ -4687,7 +4711,7 @@
         },
         "/v1/crawl": {
             "post": {
-                "description": "Crawl a website starting from a seed URL up to a given depth and page limit",
+                "description": "Crawl a website starting from a seed URL up to a given depth and page limit. A job stops starting new pages 24 hours after its first reservation: pages already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.",
                 "operationId": "create_crawl_v1_crawl_post",
                 "requestBody": {
                     "content": {

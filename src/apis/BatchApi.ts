@@ -172,7 +172,7 @@ export class BatchApi extends runtime.BaseAPI {
     }
 
     /**
-     * Queue a batch of URLs for asynchronous extraction
+     * Queue a batch of URLs for asynchronous extraction. A job stops starting new URLs 24 hours after its first reservation: URLs already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.
      * Start a batch extraction job
      */
     async createBatchV1BatchPostRaw(requestParameters: CreateBatchV1BatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BatchAccepted>> {
@@ -195,7 +195,7 @@ export class BatchApi extends runtime.BaseAPI {
     }
 
     /**
-     * Queue a batch of URLs for asynchronous extraction
+     * Queue a batch of URLs for asynchronous extraction. A job stops starting new URLs 24 hours after its first reservation: URLs already running finish, the rest are cancelled and not charged, and the job completes with stop_reason `time_limit`.
      * Start a batch extraction job
      */
     async createBatchV1BatchPost(requestParameters: CreateBatchV1BatchPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BatchAccepted> {
